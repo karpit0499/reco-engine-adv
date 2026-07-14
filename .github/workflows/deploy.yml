@@ -1,0 +1,24 @@
+name: Deploy reco-engine
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: 'reco-engine-adv'
+          workload_identity_provider: 'projects/491258383512/locations/global/workloadIdentityPools/github/providers/github-provider'
+          service_account: 'github-deployer@reco-engine-adv.iam.gserviceaccount.com'
+      - uses: google-github-actions/setup-gcloud@v3
+      - name: Deploy API
+        run: |
+          gcloud run deploy reco-api --source ./api --region europe-west3 \
+            --service-account reco-api@reco-engine-adv.iam.gserviceaccount.com \
+            --allow-unauthenticated --quiet

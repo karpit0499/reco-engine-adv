@@ -1,0 +1,9 @@
+.venv/
+.venv-kfp/
+.venv-beam/
+__pycache__/
+*.pyc
+.git/
+.terraform/
+*.tfstate*
+demo/

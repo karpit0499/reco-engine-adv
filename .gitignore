@@ -1,0 +1,14 @@
+.venv/
+.venv-beam/
+__pycache__/
+*.pyc
+infra/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*-key.json
+generator/catalog.jsonl
+generator/users.jsonl
+worker/node_modules/
+worker/.wrangler/
+.DS_Store

@@ -1,0 +1,25 @@
+version: 2
+
+sources:
+  - name: reco
+    database: reco-engine-adv
+    schema: reco
+    tables:
+      - name: impressions
+      - name: feedback
+
+models:
+  - name: stg_impressions
+    columns:
+      - name: impression_id
+        tests:
+          - not_null
+          - unique
+      - name: variant
+        tests:
+          - accepted_values:
+              values: ['control', 'treatment']
+      - name: served_by
+        tests:
+          - accepted_values:
+              values: ['personalized', 'popular']

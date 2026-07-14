@@ -1,0 +1,11 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - pipelines/Dockerfile
+      - -t
+      - europe-west3-docker.pkg.dev/reco-engine-adv/reco-training/reco-ops:v1
+      - .
+images:
+  - europe-west3-docker.pkg.dev/reco-engine-adv/reco-training/reco-ops:v1

@@ -1,0 +1,329 @@
+{
+  "components": {
+    "comp-condition-2": {
+      "dag": {
+        "tasks": {
+          "refresh": {
+            "cachingOptions": {},
+            "componentRef": {
+              "name": "comp-refresh"
+            },
+            "inputs": {
+              "parameters": {
+                "index": {
+                  "componentInputParameter": "pipelinechannel--index"
+                }
+              }
+            },
+            "taskInfo": {
+              "name": "refresh"
+            }
+          }
+        }
+      },
+      "inputDefinitions": {
+        "parameters": {
+          "pipelinechannel--evaluate-decision": {
+            "parameterType": "STRING"
+          },
+          "pipelinechannel--index": {
+            "parameterType": "STRING"
+          }
+        }
+      }
+    },
+    "comp-condition-3": {
+      "dag": {
+        "tasks": {
+          "hold": {
+            "cachingOptions": {},
+            "componentRef": {
+              "name": "comp-hold"
+            },
+            "inputs": {
+              "parameters": {
+                "score": {
+                  "componentInputParameter": "pipelinechannel--evaluate-score"
+                }
+              }
+            },
+            "taskInfo": {
+              "name": "hold"
+            }
+          }
+        }
+      },
+      "inputDefinitions": {
+        "parameters": {
+          "pipelinechannel--evaluate-decision": {
+            "parameterType": "STRING"
+          },
+          "pipelinechannel--evaluate-score": {
+            "parameterType": "NUMBER_DOUBLE"
+          }
+        }
+      }
+    },
+    "comp-condition-branches-1": {
+      "dag": {
+        "tasks": {
+          "condition-2": {
+            "componentRef": {
+              "name": "comp-condition-2"
+            },
+            "inputs": {
+              "parameters": {
+                "pipelinechannel--evaluate-decision": {
+                  "componentInputParameter": "pipelinechannel--evaluate-decision"
+                },
+                "pipelinechannel--index": {
+                  "componentInputParameter": "pipelinechannel--index"
+                }
+              }
+            },
+            "taskInfo": {
+              "name": "recall-gate"
+            },
+            "triggerPolicy": {
+              "condition": "inputs.parameter_values['pipelinechannel--evaluate-decision'] == 'promote'"
+            }
+          },
+          "condition-3": {
+            "componentRef": {
+              "name": "comp-condition-3"
+            },
+            "inputs": {
+              "parameters": {
+                "pipelinechannel--evaluate-decision": {
+                  "componentInputParameter": "pipelinechannel--evaluate-decision"
+                },
+                "pipelinechannel--evaluate-score": {
+                  "componentInputParameter": "pipelinechannel--evaluate-score"
+                }
+              }
+            },
+            "taskInfo": {
+              "name": "gate-closed"
+            },
+            "triggerPolicy": {
+              "condition": "!(inputs.parameter_values['pipelinechannel--evaluate-decision'] == 'promote')"
+            }
+          }
+        }
+      },
+      "inputDefinitions": {
+        "parameters": {
+          "pipelinechannel--evaluate-decision": {
+            "parameterType": "STRING"
+          },
+          "pipelinechannel--evaluate-score": {
+            "parameterType": "NUMBER_DOUBLE"
+          },
+          "pipelinechannel--index": {
+            "parameterType": "STRING"
+          }
+        }
+      }
+    },
+    "comp-evaluate": {
+      "executorLabel": "exec-evaluate",
+      "outputDefinitions": {
+        "parameters": {
+          "decision": {
+            "parameterType": "STRING"
+          },
+          "score": {
+            "parameterType": "NUMBER_DOUBLE"
+          }
+        }
+      }
+    },
+    "comp-hold": {
+      "executorLabel": "exec-hold",
+      "inputDefinitions": {
+        "parameters": {
+          "score": {
+            "parameterType": "NUMBER_DOUBLE"
+          }
+        }
+      }
+    },
+    "comp-refresh": {
+      "executorLabel": "exec-refresh",
+      "inputDefinitions": {
+        "parameters": {
+          "index": {
+            "parameterType": "STRING"
+          }
+        }
+      }
+    },
+    "comp-train": {
+      "executorLabel": "exec-train"
+    }
+  },
+  "deploymentSpec": {
+    "executors": {
+      "exec-evaluate": {
+        "container": {
+          "args": [
+            "--decision-out",
+            "{{$.outputs.parameters['decision'].output_file}}",
+            "--score-out",
+            "{{$.outputs.parameters['score'].output_file}}"
+          ],
+          "command": [
+            "python",
+            "/app/evaluate.py"
+          ],
+          "env": [
+            {
+              "name": "PROJECT",
+              "value": "reco-engine-adv"
+            },
+            {
+              "name": "RECALL_FLOOR",
+              "value": "0.35"
+            },
+            {
+              "name": "RECALL_MARGIN",
+              "value": "0.03"
+            }
+          ],
+          "image": "europe-west3-docker.pkg.dev/reco-engine-adv/reco-training/reco-ops:v1"
+        }
+      },
+      "exec-hold": {
+        "container": {
+          "args": [
+            "{{$.inputs.parameters['score']}}"
+          ],
+          "command": [
+            "python",
+            "/app/hold.py"
+          ],
+          "env": [
+            {
+              "name": "PROJECT",
+              "value": "reco-engine-adv"
+            }
+          ],
+          "image": "europe-west3-docker.pkg.dev/reco-engine-adv/reco-training/reco-ops:v1"
+        }
+      },
+      "exec-refresh": {
+        "container": {
+          "args": [
+            "{{$.inputs.parameters['index']}}"
+          ],
+          "command": [
+            "python",
+            "/app/refresh_index.py"
+          ],
+          "env": [
+            {
+              "name": "PROJECT",
+              "value": "reco-engine-adv"
+            }
+          ],
+          "image": "europe-west3-docker.pkg.dev/reco-engine-adv/reco-training/reco-ops:v1"
+        }
+      },
+      "exec-train": {
+        "container": {
+          "command": [
+            "python",
+            "/app/train.py"
+          ],
+          "env": [
+            {
+              "name": "PROJECT",
+              "value": "reco-engine-adv"
+            },
+            {
+              "name": "TF_USE_LEGACY_KERAS",
+              "value": "1"
+            }
+          ],
+          "image": "europe-west3-docker.pkg.dev/reco-engine-adv/reco-training/reco-ops:v1",
+          "resources": {
+            "cpuLimit": 4.0,
+            "memoryLimit": 16.0,
+            "resourceCpuLimit": "4",
+            "resourceMemoryLimit": "16G"
+          }
+        }
+      }
+    }
+  },
+  "pipelineInfo": {
+    "description": "Retrain the two-tower and promote to the live index only if offline recall did not regress.",
+    "name": "reco-retrain"
+  },
+  "root": {
+    "dag": {
+      "tasks": {
+        "condition-branches-1": {
+          "componentRef": {
+            "name": "comp-condition-branches-1"
+          },
+          "dependentTasks": [
+            "evaluate"
+          ],
+          "inputs": {
+            "parameters": {
+              "pipelinechannel--evaluate-decision": {
+                "taskOutputParameter": {
+                  "outputParameterKey": "decision",
+                  "producerTask": "evaluate"
+                }
+              },
+              "pipelinechannel--evaluate-score": {
+                "taskOutputParameter": {
+                  "outputParameterKey": "score",
+                  "producerTask": "evaluate"
+                }
+              },
+              "pipelinechannel--index": {
+                "componentInputParameter": "index"
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "condition-branches-1"
+          }
+        },
+        "evaluate": {
+          "cachingOptions": {},
+          "componentRef": {
+            "name": "comp-evaluate"
+          },
+          "dependentTasks": [
+            "train"
+          ],
+          "taskInfo": {
+            "name": "evaluate"
+          }
+        },
+        "train": {
+          "cachingOptions": {},
+          "componentRef": {
+            "name": "comp-train"
+          },
+          "taskInfo": {
+            "name": "train"
+          }
+        }
+      }
+    },
+    "inputDefinitions": {
+      "parameters": {
+        "index": {
+          "parameterType": "STRING"
+        }
+      }
+    }
+  },
+  "schemaVersion": "2.1.0",
+  "sdkVersion": "kfp-2.17.0"
+}
