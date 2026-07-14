@@ -1,5 +1,6 @@
 .venv/
 .venv-beam/
+.venv-kfp/
 __pycache__/
 *.pyc
 infra/.terraform/
@@ -9,6 +10,5 @@ infra/.terraform/
 *-key.json
 generator/catalog.jsonl
 generator/users.jsonl
-worker/node_modules/
-worker/.wrangler/
+logs/
 .DS_Store
