@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>reco-engine-adv — a recommender you can watch think</title>
+<meta name="description" content="A two-tower retrieval model, a boosted-tree ranker and a live A/B test, running entirely in your browser. Built on GCP; served from 400 KB of exported vectors.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <b>reco-engine-adv</b>
+      <span class="pulse" id="pulse">live</span>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button role="tab" id="t-shop" aria-selected="true"  aria-controls="p-shop">Shop</button>
+      <button role="tab" id="t-lab"  aria-selected="false" aria-controls="p-lab">Lab</button>
+      <button role="tab" id="t-ask"  aria-selected="false" aria-controls="p-ask">Ask</button>
+    </nav>
+  </header>
+
+  <section class="verdict">
+    <h1 id="headline">You are in the <em id="arm-word">treatment</em> arm.</h1>
+    <p id="subline">
+      <code id="hash-line">sha256(session) mod 2 = 1</code> — the same rule the Cloud Run API uses.
+      Hashing the <em>user</em>, not the request, is what keeps the experiment valid: refresh all
+      you like, you stay in this arm.
+    </p>
+  </section>
+
+  <div class="readout" id="readout"></div>
+
+  <!-- ─────────────────────────────── SHOP ─────────────────────────────── -->
+  <main id="p-shop" role="tabpanel" aria-labelledby="t-shop">
+    <div class="stage">
+      <div class="sky-box">
+        <span class="sky-tag">item tower · 32-d → 2-d (t-SNE) · 500 items</span>
+        <div class="sky-legend">
+          <label><input type="checkbox" id="bycat"> colour by category</label>
+        </div>
+        <div id="sky"></div>
+        <div class="key">
+          <span><i class="t"></i> retrieved by the model</span>
+          <span><i class="c"></i> served by popularity</span>
+          <span><i class="n"></i> catalogue</span>
+        </div>
+      </div>
+
+      <aside class="side">
+        <div class="card">
+          <h3>The funnel</h3>
+          <div class="funnel" id="funnel"></div>
+        </div>
+        <div class="card" id="why-card" hidden>
+          <h3>Why these ten</h3>
+          <div class="bars" id="why"></div>
+          <p class="prose" style="margin:12px 0 0;font-size:12.5px">
+            Ranker probabilities for the ten served, and the feature that moved them.
+          </p>
+        </div>
+      </aside>
+    </div>
+
+    <section class="shelf">
+      <div class="shelf-head">
+        <h2 id="served-title">Served to you</h2>
+        <span class="note" id="served-note"></span>
+      </div>
+      <div class="rail" id="served"></div>
+    </section>
+
+    <section class="shelf ghost">
+      <div class="shelf-head">
+        <h2>The counterfactual — what the other arm would have served</h2>
+        <span class="note">not shown to you; shown here because you can afford to see it</span>
+      </div>
+      <div class="rail" id="counter"></div>
+    </section>
+
+    <section class="shelf">
+      <div class="shelf-head">
+        <h2>Browse — click anything, watch your vector move</h2>
+        <span class="note" id="browse-note">0 clicks · no session vector yet · cold start</span>
+      </div>
+      <div class="rail" id="browse"></div>
+    </section>
+  </main>
+
+  <!-- ─────────────────────────────── LAB ──────────────────────────────── -->
+  <main id="p-lab" role="tabpanel" aria-labelledby="t-lab" hidden>
+    <div id="alarm-slot"></div>
+    <div class="lab-grid">
+      <div>
+        <div class="card">
+          <h3>CTR by arm — live, this browser</h3>
+          <div id="chart"></div>
+          <div class="ci">
+            <div class="ci-lab"><span>−10pp</span><span>0</span><span>+20pp</span></div>
+            <div class="ci-track">
+              <div class="ci-zero" id="cizero"></div>
+              <div class="ci-bar" id="cibar"></div>
+              <div class="ci-mid" id="cimid"></div>
+            </div>
+            <p class="prose" style="font-size:12.5px;margin:8px 0 0">
+              95% CI on the <strong>difference</strong> (Agresti–Caffo). Two overlapping per-arm
+              intervals do <strong>not</strong> imply a non-significant difference — this is the
+              interval that decides it. It clears zero, or it doesn't.
+            </p>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:18px">
+          <h3>Fidelity — does the browser agree with the cloud?</h3>
+          <div id="fidelity"><button class="btn ghosted" id="run-fid">Run the check</button></div>
+        </div>
+      </div>
+
+      <aside class="side">
+        <div class="card">
+          <h3>Simulate traffic</h3>
+          <div class="controls">
+            <div class="ctl">
+              <label>preference strength <span id="v-pref">0.70</span></label>
+              <input type="range" id="s-pref" min="0.2" max="0.95" step="0.05" value="0.7">
+            </div>
+            <div class="ctl">
+              <label>match boost <span id="v-boost">0.30</span></label>
+              <input type="range" id="s-boost" min="0" max="0.5" step="0.02" value="0.3">
+            </div>
+            <div class="ctl">
+              <label>rounds <span id="v-rounds">600</span></label>
+              <input type="range" id="s-rounds" min="100" max="3000" step="100" value="600">
+            </div>
+            <button class="btn" id="run-sim">Run the experiment</button>
+            <button class="btn ghosted" id="reset-sim">Reset to zero</button>
+          </div>
+          <p class="prose" style="font-size:12.5px;margin:13px 0 0">
+            The click model never asks which arm it's in. It asks
+            <em>“how many of these ten are in the category I actually like?”</em> Treatment wins only
+            if personalisation genuinely beats popularity. Build it the other way and you've written
+            a random number generator with a p-value.
+          </p>
+        </div>
+
+        <div class="card">
+          <h3>The embedding space</h3>
+          <div class="controls">
+            <button class="btn ghosted" id="retrain" disabled>Retrain — swap in run 2</button>
+            <button class="btn danger" id="break" disabled>Break it — swap items only</button>
+          </div>
+          <p class="prose" style="font-size:12.5px;margin:13px 0 0">
+            Every retrain produces a <strong>brand-new, randomly initialised</strong> space. A user
+            vector from run 2 is meaningless against item vectors from run 1 — coordinates in
+            different rooms. Press the red button to serve recommendations from that gap.
+          </p>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <!-- ─────────────────────────────── ASK ──────────────────────────────── -->
+  <main id="p-ask" role="tabpanel" aria-labelledby="t-ask" hidden>
+    <div class="card">
+      <h3>Ask the system about itself</h3>
+      <div class="chat" id="chat"></div>
+      <div class="composer">
+        <input id="q" placeholder="Why did you show me item i0314?" autocomplete="off">
+        <button class="btn" id="send">Send</button>
+      </div>
+      <p class="prose" style="margin:14px 0 0;font-size:12.5px">
+        The model does not invent recommendations. It calls the <em>same</em> functions this page
+        calls — <code>get_variant</code>, <code>recommend</code>, <code>explain_item</code>,
+        <code>experiment_status</code> — and narrates what comes back. If it can't get an answer
+        from a tool, it says so.
+      </p>
+    </div>
+  </main>
+
+  <footer class="foot">
+    <span id="foot-stats">—</span>
+    <span>
+      <a href="https://github.com/karpit0499/reco-engine-adv">source</a> ·
+      no backend · no cookies · nothing bills
+    </span>
+  </footer>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+name: Deploy demo
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+  actions: read          # current deploy-pages needs this to read the uploaded artifact
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4      # v4 — v3 uploads an artifact format
+        with:                                       # that current deploy-pages won't read
+          path: ./demo
+      - id: deploy
+        uses: actions/deploy-pages@v4
