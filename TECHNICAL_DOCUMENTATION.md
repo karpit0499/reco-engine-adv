@@ -39,7 +39,7 @@ generator ─pub/sub─► Dataflow (Beam, streaming) ─insertAll─► BigQuer
                                │
         ┌──────────────────────┼───────────────────────────┐
         ▼                      ▼                           ▼
-  two-proportion z-test   drift queries            KFP v2 retraining pipeline
+  user-level A/B test     drift queries            KFP v2 retraining pipeline
   (Phase 13)              (PSI-style, Phase 14)    with off-index recall gate (Phase 15.3)
 ```
 
@@ -219,15 +219,14 @@ Two non-negotiables in that query, both silent when violated:
 
 ### 7.3 Analysis
 
-Two-proportion z-test on CTR, with a 95 % confidence interval on the absolute difference. Reported as a full statement — lift %, absolute difference, CI, z, p — never as a bare percentage.
+Assignment is by `user_id`, so the primary analysis uses the same unit: compute one CTR per user, give each user equal weight, and compare arms with a two-sided Welch t-test and 95 % confidence interval. Aggregate impression CTR is descriptive only. A secondary linear-probability model keeps impression weighting but clusters its standard errors by user.
 
 **Intent-to-treat.** Fallback-served impressions stay in the treatment arm. Dropping them would measure "personalization, given that personalization was possible," which is not the decision anyone actually faces. Instead, the fallback rate is reported alongside the lift: it is *part* of the treatment's real-world performance, and it is the number that tells you what fraction of the lift is being left on the table by cold start.
 
 **Caveats that are stated before anyone asks:**
-- **Peeking.** The test is run once, at a pre-decided stopping point. Refreshing a z-test until it crosses 0.05 manufactures false positives at a rate far above the nominal α.
+- **Historical cutoff, not preregistration.** The checked fixture ends at the last row in the 3,004-impression snapshot reported in repository history. That reproduces the old result; it does not prove the stopping rule was chosen before looking at outcomes.
 - **The click model is an assumption.** Simulated users click according to a rule I wrote. The *method* generalizes; the *number* does not.
-- **Independence.** The z-test assumes independent impressions. Repeated impressions to the same user are correlated; at this scale it's a footnote, at production scale it's a cluster-robust variance estimate.
-- **Different CI formulae disagree.** The Newcombe interval (`statsmodels`) and Agresti–Caffo differ in the third decimal on small samples. If two implementations must agree, say which one is normative.
+- **Repeated impressions.** Users generated 2–19 impressions each. Treating those impressions as independent understates uncertainty; the primary user-level test and secondary cluster-robust model both account for that structure.
 
 ---
 
@@ -251,7 +250,7 @@ train → evaluate (off-index, brute force) → dsl.If(recall_ok) ─► refresh
 
 The obvious design — "retrain, then score the new model against the live index; promote if recall improved" — **can never open the gate.** Immediately after a retrain you have *new user vectors* and, in the live index, *old item vectors*. Scoring one against the other measures the **consistency window**, not the model, and returns ≈chance after every retrain, good or bad. A gate wired to that signal is a gate that is permanently shut, and it will look like the model is permanently broken.
 
-So the evaluator brute-forces the **fresh** item vectors against the **fresh** user vectors (dot product, matching the index's distance measure), computes top-K recall against ground truth, and compares against a **champion score persisted in GCS**.
+So the evaluator brute-forces the **fresh** item vectors against the **fresh** user vectors (dot product, matching the index's distance measure), computes preferred-category share in the top K against synthetic ground truth, and compares against a **champion score persisted in GCS**. This is a wiring/consistency gate, not held-out interaction Recall@K.
 
 **The gate rule is "don't promote a regression," not "only promote an improvement."** Strict improvement sounds rigorous and is a trap: once the model saturates on the available data, a perfectly healthy retrain lands *within noise* of the previous run, and a strict rule means you never promote again. The rule is: pass if the score clears an absolute floor **and** has not dropped more than a small margin below the reigning champion.
 
@@ -269,7 +268,7 @@ So the evaluator brute-forces the **fresh** item vectors against the **fresh** u
 - **The recall gate covers item vectors only** (§8.2).
 - **Cold-start items are unretrievable** (§4) — no content-based tower, so a new item requires interactions before it can be recommended.
 - **The API is unauthenticated**, so the load simulator can reach it without auth plumbing. Production: IAP or an API gateway.
-- **Impressions are treated as independent** in the z-test (§7.3).
+- **The historical experiment cutoff is not proof of preregistration** (§7.3).
 - **The population is simulated.** The evaluation validates the pipeline, not a business hypothesis.
 - **Online feature serving is not on the serving path.** Bigtable is created, benchmarked, and deleted, because it has a hard **per-node-hour** cost floor (published figures have ranged ~\$0.65–1.20/node-hour ⇒ roughly €450–850/month for one node, left up). Development serves features from BigQuery directly. The trade-off is the deliverable; the Bigtable instance is not.
 
@@ -289,10 +288,10 @@ So the evaluator brute-forces the **fresh** item vectors against the **fresh** u
 
 | Claim | Produced by |
 |---|---|
-| CTR lift, CI, z, p | `analysis/ab_test.py` (Phase 13) |
-| Preferred-category share in top-10 vs 20 % random baseline | `featurestore/test_retrieval.py` (Phase 9) |
+| Mean per-user CTR difference, Welch CI/t/p, cluster-robust sensitivity result | `analysis/ab_test.py` + `analysis/fixtures/verified_snapshot.json.gz` |
+| All-300 preferred-category Precision@10 and category-NDCG@10 | `analysis/reproduce_retrieval_metrics.py` + the same sanitized fixture |
 | `same_category` tops feature importance | `ML.FEATURE_IMPORTANCE(MODEL reco.ranker)` (Phase 10) |
-| Bigtable cold vs warm read latency (report as a **pair**, with `n`) | `featurestore/online_store_demo.py` (Phase 6.2) |
+| Bigtable benchmark methodology (no current checked latency claim) | `featurestore/online_store_demo.py` (Phase 6.2) |
 | Recall gate open/closed decision | the `evaluate` component's KFP output (Phase 15.3) |
 
 ## Appendix B — Cost surface

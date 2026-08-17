@@ -8,7 +8,7 @@ Every command, every file, and every gotcha is written out in full. Nothing is l
 
 ## What this builds
 
-User interactions stream through **Pub/Sub** and **Dataflow** into BigQuery. Append-only feature snapshots are cataloged in the (current, non-legacy) **Vertex AI Feature Store**. A **two-tower retrieval model** (TensorFlow Recommenders) learns user and item embeddings. **Vertex AI Vector Search** serves nearest-neighbour candidates in milliseconds; a **BQML boosted-tree ranker** re-orders them. A live **A/B test with a real significance test** measures lift over a popular-items baseline. Drift monitoring and a **gated retraining pipeline** — which refuses to promote new embeddings into the live index unless offline recall holds up — keep it healthy. Everything is Terraform-provisioned and shipped by keyless GitHub Actions.
+User interactions stream through **Pub/Sub** and **Dataflow** into BigQuery. Append-only feature snapshots are cataloged in the (current, non-legacy) **Vertex AI Feature Store**. A **two-tower retrieval model** (TensorFlow Recommenders) learns user and item embeddings. **Vertex AI Vector Search** supplies nearest-neighbour candidates; a **BQML boosted-tree ranker** re-orders them. A synthetic **A/B test analyzed at its per-user randomization unit** compares personalization with a popular-items baseline. Drift monitoring and a **gated retraining pipeline** — which refuses to promote new embeddings unless its synthetic category-consistency check holds up — keep the loop honest. Everything is Terraform-provisioned and shipped by keyless GitHub Actions.
 
 Two things here are unusual for a self-directed build: **a feature store framed around training–serving skew**, and **an A/B test analyzed with statistics rather than vibes**.
 
@@ -19,7 +19,7 @@ Two things here are unusual for a self-directed build: **a feature store framed 
 - **The commands assume macOS** (Homebrew for Python, Apple Silicon for the Docker architecture gotcha in Step 7.4). On Linux everything works with the obvious substitutions — your package manager for `brew`, and the `linux/amd64` build note in Step 7.4 stops applying because you are already on it.
 - Budget: this runs at roughly **€0–5** if you follow the off-switches. Two resources bill *while switched on* (a Dataflow streaming job, a deployed Vector Search index endpoint) and one bills *heavily* (Bigtable online serving, hundreds of € / month for a single node). The guide tells you exactly when to kill each one.
 
-> **How to use this guide.** **Phases 0–7 are the Core Path** — event stream, features, and a trained two-tower model producing recommendations. **Phases 8–15 are the production system** — vector serving, ranking, the online API, the experiment, the statistics, drift, and retraining. **Phases 16–18** add dbt, CI/CD, and packaging. One phase per sitting; every phase ends with a ✅ checkpoint. Do not try to do this in one weekend.
+> **How to use this guide.** **Phases 0–7 are the Core Path** — event stream, features, and a trained two-tower model producing recommendations. **Phases 8–15 are the production system** — candidate retrieval, ranking, the online API, the experiment, user-level inference, drift, and retraining. **Phases 16–18** add dbt, CI/CD, and packaging. One phase per sitting; every phase ends with a ✅ checkpoint. Do not try to do this in one weekend.
 
 > **Safety note before you start.** Nothing in this guide asks you to download a service-account key, and you should not create one. Authentication is `gcloud auth application-default login` locally and **Workload Identity Federation** in CI. Every `.tfstate`, key file, and generated data dump is `.gitignore`d in Phase 17. Substitute your own project ID and GitHub username wherever the guide shows them.
 
@@ -49,7 +49,8 @@ Two things here are unusual for a self-directed build: **a feature store framed 
                                              ▼               ▼
                               ┌─────────────────────┐  ┌──────────────────┐
                               │ Vertex AI           │  │ BigQuery         │
-                              │ Vector Search (ANN) │  │ user_embeddings  │
+                              │ Vector Search       │  │ user_embeddings  │
+                              │ (ANN candidates)    │  │ (batch vectors)  │
                               └──────────┬──────────┘  └────────┬─────────┘
                                          │                      │
                                          └──────────┬───────────┘
@@ -62,7 +63,7 @@ Two things here are unusual for a self-directed build: **a feature store framed 
                  └───────────────────┬────────────────────────────┘
                                      │ impressions + feedback (append-only)
                                      ▼
-        z-test lift analysis · drift monitor · retrain → live index upsert
+       user-level lift analysis · drift monitor · retrain → live index upsert
                                      ▼
                        dbt experiment marts + Looker Studio
 
@@ -80,8 +81,8 @@ Two things here are unusual for a self-directed build: **a feature store framed 
 | Two-tower retrieval (TFRS) | Phase 7 | **High — recsys core** |
 | **Vector Search (ANN retrieval)** | Phase 8–9 | **High — recsys/GenAI** |
 | Two-stage retrieve→rank architecture | Phase 10 | High |
-| Low-latency online serving | Phase 11 | High |
-| **A/B testing + significance testing** | Phase 12–13 | **Very high — rarely done properly** |
+| Online API design | Phase 11 | High |
+| **A/B testing + user-level inference** | Phase 12–13 | **Very high — rarely done properly** |
 | Drift monitoring + retraining loop | Phase 14–15 | Very high — MLOps |
 | **Pipeline orchestration + conditional deploy gate (KFP / Vertex AI Pipelines)** | Phase 15.3 | **Very high — MLOps** |
 | dbt + BI | Phase 16 | High |
@@ -1031,7 +1032,7 @@ python featurestore/register.py
 
 ## Step 6.1 — The dev path (free): read the `_latest` views
 
-Nothing to build — you made the views in Step 4.3. The API (Phase 11) queries `user_features_latest`, `item_features_latest`, and `user_embeddings_latest` directly. At portfolio QPS that's tens of milliseconds and costs nothing.
+Nothing to build — you made the views in Step 4.3. The API (Phase 11) queries `user_features_latest`, `item_features_latest`, and `user_embeddings_latest` directly. That is acceptable for this portfolio traffic, but no current production-serving latency is claimed.
 
 That is a legitimate architecture, not a cop-out, and the reason is money:
 
@@ -1152,7 +1153,7 @@ try:
                   f"min {lat[0]:.1f} ms   max {lat[-1]:.1f} ms")
             print(f"           n={len(lat)} successful / {attempts} attempts "
                   f"({misses} transient failures)")
-            print("^^^ SCREENSHOT THIS — the warm median is the online-serving number.")
+            print("^^^ SAVE THIS RAW WARM-READ DIAGNOSTIC WITH ITS CONTEXT.")
         break
     else:
         print("sync did not finish within 15 min — deleting anyway, cost > curiosity")
@@ -1176,13 +1177,9 @@ cd ~/dev/reco-engine-adv && source .venv/bin/activate
 python featurestore/online_store_demo.py
 ```
 
-Expect: a few minutes of `not synced yet`, then a **cold read of ~150–250 ms**, then a settle pause, then a `WARM READ` block reporting median / p95 / min / max over 20 reads. Screenshot that block — it's the artifact this phase exists to produce.
+Expect: a few minutes of `not synced yet`, then one cold read and a `WARM READ` summary over repeated reads. Save the raw output.
 
-**What the warm median actually measures, and why it isn't single-digit.** Run from a laptop, this is a round trip over the public internet into `europe-west3` plus the Feature Store's serving API, and *then* a Bigtable lookup. On the run this guide was written against it came out at **median 102.8 ms** (p95 191.5, min 83.2, max 191.5, n = 20/20). Bigtable's own contribution to that is a small fraction of it. The number is honest and it is still the right number to report — provided you say **where you measured it from**. A client inside the same region talks to a different network; a client on your sofa does not. What the phase proves is not "Bigtable is fast," it is *what an online store costs and what it takes to reach one* — and those are the two facts the Phase 6.1 decision turns on.
-
-> **⚠️ Do not report the cold read as your latency — and the naive version of this script invites you to.** The obvious way to write it is: poll until a read succeeds, time that read, `break`, screenshot. That number will be **~200 ms**, and it is *not* your online-serving latency. It is one read that also paid for gRPC channel setup, a TLS handshake, and a client→region round trip. Report *that* as "Bigtable online feature serving latency" and the first person who asks "over how many reads?" gets the answer "one," and the number evaporates — taking the whole cost/latency argument with it, because you have just accidentally made the case that Bigtable is **slow *and* expensive**.
->
-> The honest artifact is the **pair**, with the measurement point named: *"Cold read 216 ms, warm median 103 ms over 20 reads, measured from a laptop outside GCP — the cold read's extra ~110 ms is channel establishment and TLS, not the store."* That is a stronger sentence than either number alone, and unlike a bare median it survives the first follow-up question.
+Treat this only as a measurement exercise. A publishable result needs the cold and warm paths labelled separately, the measurement point and hardware, the warmup and repeat counts, and every success or failure. This repository has no current machine-readable Bigtable run artifact, so it publishes no Bigtable latency number.
 
 > **⚠️ Gotcha — `ALREADY_EXISTS: Re-using the same name as a FeatureOnlineStore being deleted`.** You will hit this the *second* time you run the script, and it is the most confusing error in the phase, because the check you'd naturally run to rule it out **says you're fine**:
 >
@@ -1227,7 +1224,7 @@ Expect: a few minutes of `not synced yet`, then a **cold read of ~150–250 ms**
 > ```
 > It must print `[]`. (If your gcloud *is* new enough, `gcloud ai feature-online-stores list --region=europe-west3 --project=reco-engine-adv` works too, and the console path is **Vertex AI → Feature Store → Online store**.)
 
-✅ **Checkpoint 6:** the `_latest` views return one row per entity; you have the **warm** latency screenshot (median + p95 + the transient-failure count, *not* the cold read); and `FeatureOnlineStore.list()` prints `[]`.
+✅ **Checkpoint 6:** the `_latest` views return one row per entity; you saved the raw cold/warm diagnostic with its measurement context and failure count; and `FeatureOnlineStore.list()` prints `[]`. Do not publish a latency number without checking in that evidence.
 
 ---
 
@@ -1460,7 +1457,7 @@ TF_USE_LEGACY_KERAS=1 PROJECT=reco-engine-adv python training/train.py
 
 Minutes, not hours. `factorized_top_k/top_100_categorical_accuracy` climbing across the five epochs is your first evidence the model is learning something.
 
-> **Be honest about that metric.** `factorized_top_k` here is computed on the **training** data — it is not an offline evaluation, and quoting it as one in your README is the kind of thing that gets caught. The real offline metric for this project is **Phase 9's preferred-category share**, measured against ground truth the model never saw. Use that as your headline.
+> **Be honest about that metric.** `factorized_top_k` here is computed on the **training** data — it is not an offline evaluation. Phase 9's preferred-category share uses hidden synthetic category labels, so it is a latent-category wiring check, not held-out recommendation quality. Report it with that name and caveat.
 
 > **Gotcha — `UnimplementedError: File system scheme 'gs' not implemented`.** If you see this, `tensorflow-io-gcs-filesystem` is missing from your venv — which means you skipped the pin in Step 7.1. Fix it in place: `pip install tensorflow-io-gcs-filesystem==0.37.1`, then re-run.
 
@@ -1633,7 +1630,7 @@ gcloud logging read \
   --project=reco-engine-adv --limit=20 --order=asc --format="value(textPayload)"
 ```
 
-`factorized_top_k/top_100_categorical_accuracy` should **climb across the five epochs**. Flat means the model didn't learn, and Phase 8 will happily build a Vector Search index out of nothing. (Same honesty caveat as Step 7.3: this is a *training-set* metric — evidence of learning, not an offline evaluation. Phase 9's preferred-category share is the number for your README.)
+`factorized_top_k/top_100_categorical_accuracy` should **climb across the five epochs**. Flat means the model didn't learn, and Phase 8 will happily build a Vector Search index out of nothing. This is a *training-set* metric — evidence of learning, not an offline evaluation. Report the preferred-category check only as synthetic embedding-space consistency, never as held-out ranking quality.
 
 ---
 
@@ -1641,7 +1638,7 @@ gcloud logging read \
 
 # Phase 8 — Build & deploy the Vector Search index (~2 hrs, mostly waiting)
 
-**Goal:** Load the item embeddings into **Vertex AI Vector Search** for millisecond nearest-neighbour retrieval.
+**Goal:** Load the item embeddings into **Vertex AI Vector Search** for managed nearest-neighbour candidate retrieval. Serving latency needs a separate, current benchmark.
 
 > **Term — ANN (approximate nearest neighbour):** finding the closest vectors to a query vector *exactly* means comparing against all of them — fine for 500 items, hopeless for 50 million. ANN indexes (Vector Search uses a tree + quantization scheme called ScaNN/tree-AH) trade a sliver of accuracy for a logarithmic-ish search, turning "scan everything" into "look in the right neighbourhood." This is the same machinery behind RAG vector databases — which is why this phase transfers directly to GenAI retrieval work, not just recsys.
 
@@ -1703,7 +1700,7 @@ This call fails in **two** distinct ways on a clean project, back to back, at th
 >
 > and then, in the serializer: `res["algorithmConfig"] = None` when there's no config — a null that gets stripped when the metadata dict becomes a protobuf `Struct`. So `create_tree_ah_index` sends a request containing **no tree-AH config**, and the server refuses it. Versions ≤ **1.122** built the `TreeAhConfig` unconditionally, passing `None`s that the server filled in itself; the regression landed between 1.122 and 1.125. **Passing either parameter is enough to satisfy it.** Pass both, so the search behaviour is stated rather than inherited.
 >
-> **Why 500 / 100 specifically.** `leaf_node_embedding_count` is how many vectors sit in each leaf of the tree; at 500 items that's a single leaf. `leaf_nodes_to_search_percent` is what fraction of leaves a query scans — the default 10 % is a speed/recall trade-off that only starts paying for itself at millions of vectors. At 500 items, scanning 100 % costs microseconds and gives you **exact** nearest neighbours, so Phase 9's number measures your *model* and not ANN approximation error. Don't pin the SDK backwards to dodge this (`pip install 'google-cloud-aiplatform<1.125'`) — you'd drag Feature Store, KFP, and prediction back months to fix one line.
+> **Why 500 / 100 specifically.** `leaf_node_embedding_count` is how many vectors sit in each leaf of the tree; at 500 items that's a single leaf. `leaf_nodes_to_search_percent` is what fraction of leaves a query scans — the default 10 % is a speed/recall trade-off that only starts paying for itself at much larger catalogues. At this scale, scanning 100 % of the leaves minimizes the tree's approximation effect. Do not infer latency from that setting; measure it separately. Don't pin the SDK backwards to dodge this (`pip install 'google-cloud-aiplatform<1.125'`) — you'd drag Feature Store, KFP, and prediction back months to fix one line.
 
 > **⚠️ Failure 2 — `The Cloud Storage bucket ... is in location 'eu'. It must be in the same regional location as the service location 'europe-west3'.`** This is why `contents_delta_uri` points at `reco-engine-adv-vectors` and not at the artifacts bucket everything else uses. **`EU` is a multi-region; `europe-west3` is a region. To Vector Search these are different location *types*, not "near enough."** Every other service in this build is happy with the multi-region bucket — BigQuery (also `EU`), Dataflow staging, the tower exports. Vector Search is the sole exception, and it is a hard stop.
 >
@@ -1800,7 +1797,7 @@ INDEX_ENDPOINT=$(gcloud ai index-endpoints list --region=europe-west3 \
 python featurestore/test_retrieval.py "$INDEX_ENDPOINT"
 ```
 
-With the 70 %-preference generator, expect the preferred-category share to beat the 20 % random baseline by a wide margin. **That number is your headline offline metric** — it's measured against ground truth the model was never shown, which is exactly what `factorized_top_k` is not.
+With the 70 %-preference generator, expect preferred-category share to beat its catalogue-mix random baseline by a wide margin. Treat that as a **synthetic latent-category consistency check**. It is not conventional held-out Recall@K or evidence about real users.
 
 > **If every user returns the same items, or the share sits at ~20 %:** the index is serving stale or empty content. Confirm the embeddings file is populated and that you created the index *after* training wrote it. Check the **`…-vectors`** copy — that is the one the index was actually built from, and if the two buckets ever disagree, this is where the lie lives:
 > ```bash
@@ -1814,7 +1811,7 @@ With the 70 %-preference generator, expect the preferred-category share to beat 
 
 # Phase 10 — The ranking model (retrieve → rank) (~2 hrs)
 
-**Goal:** Stage two of the classic recsys architecture. Retrieval narrows 500 items → 50 candidates in milliseconds; a **BQML boosted-tree classifier** then re-orders those 50 using richer features that would be far too expensive to apply to the whole catalog.
+**Goal:** Stage two of the classic recsys architecture. Retrieval narrows 500 items → 50 candidates; a **BQML boosted-tree classifier** then re-orders those 50 using richer features that would be too expensive to apply to a large catalogue.
 
 > **Term — retrieve → rank:** a two-stage funnel. Stage 1 (cheap, approximate, high recall) throws away 90 % of the catalog. Stage 2 (expensive, precise, high precision) carefully orders what's left. Splitting the problem this way is what makes real recommenders both fast *and* accurate — and knowing *why* the split exists is the whole idea.
 
@@ -1880,7 +1877,7 @@ ORDER BY importance_gain DESC;
 
 `same_category` should dominate — the boosted tree discovering the exact same hidden preference structure the two-tower model found, through a completely different lens. That agreement between two independent models is worth a sentence in your README.
 
-> **The one-paragraph framing:** *"Retrieval — two-tower plus Vector Search — narrows 500 candidates to 50 in milliseconds. Ranking — boosted trees on cross features like user-top-category × item-category — orders those 50. Splitting the problem is what lets a real recommender be both fast and accurate."*
+> **The one-paragraph framing:** *"Retrieval — two-tower plus Vector Search — narrows the candidate set. Ranking — boosted trees on cross features like user-top-category × item-category — orders those candidates. Splitting the problem lets each stage optimize a different job; serving latency still needs its own measured benchmark."*
 
 ✅ **Checkpoint 10:** the ranker trains with a sane ROC AUC (well above 0.5) and `same_category` tops feature importance.
 
@@ -2215,7 +2212,17 @@ API_URL="$API_URL" ROUNDS=3000 python simulate.py     # ~10–15 min
 
 > **Prerequisites this script silently depends on:** the **Vector Search index endpoint must still be deployed** (if you undeployed it to save money, the API returns 503 and the simulator will bail out after 50 failures — which is the intended behaviour, not a bug), and `users.jsonl` / `catalog.jsonl` must be in the current directory. Those two files are `.gitignore`d, but `generate.py` is seeded — re-running it regenerates byte-identical files.
 
-> **Why 3,000 rounds.** You need enough impressions per arm for the z-test in Phase 13 to have any power. 3,000 rounds ≈ 1,500 per arm; at CTRs around 9 % vs 24 % that's comfortably enough to reach significance. If Phase 13 comes back "not yet significant," the fix is more rounds — not a different test.
+> **Why 3,000 rounds.** Assignment is by user, so 3,000 impressions are **not** 3,000 independent experimental units: with 300 simulated users they give roughly ten observations per user, while the randomized sample remains 300 users. That makes each user's CTR less noisy, but it does not manufacture more users. Pick and record the round count before looking at outcomes; do not add rounds merely because a p-value missed a threshold.
+
+Record the end of the run before analyzing outcomes. For a new build, save this exact timestamp/ID pair and pass it to the fixture refresh in Phase 13:
+
+```sql
+SELECT FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%E6SZ', served_at) AS cutoff,
+       impression_id AS cutoff_impression_id
+FROM `reco-engine-adv.reco.impressions`
+ORDER BY served_at DESC, impression_id DESC
+LIMIT 1;
+```
 
 ✅ **Checkpoint 12:** thousands of impressions across both variants, with feedback rows accumulating in `reco.feedback`.
 
@@ -2223,9 +2230,9 @@ API_URL="$API_URL" ROUNDS=3000 python simulate.py     # ~10–15 min
 
 # Phase 13 — Statistical lift analysis (~1.5 hrs)
 
-**Goal:** Decide whether treatment beats control **with statistics**, and state the result the way a data scientist would — with a confidence interval on the *difference*, not just a bigger-looking number.
+**Goal:** Compare treatment with control at the unit that was actually randomized — `user_id` — and report an effect size with its uncertainty.
 
-> **Term — two-proportion z-test:** you have two conversion rates measured on two samples. The z-test asks: *if the two arms were truly identical, how unlikely would a gap this large be, purely by chance?* That probability is the **p-value**. Small p (< 0.05 by convention) → "chance alone is a poor explanation." It does **not** mean the effect is large or important — only that it's unlikely to be noise.
+> **Term — randomization unit:** the API hashes `user_id`, so one user stays in one arm across repeated requests. Those repeated impressions are correlated. The primary analysis therefore computes one CTR per user and compares the two sets of user CTRs with Welch's t-test. Aggregate impression CTR remains useful description, not an independent-impressions test.
 
 ## Step 13.1 — The topline numbers (impressions ⋈ feedback)
 
@@ -2258,83 +2265,47 @@ Expect three rows: `control/popular`, `treatment/personalized`, and — if any u
 ## Step 13.2 — The significance test
 
 ```bash
-mkdir -p ~/dev/reco-engine-adv/analysis
 cd ~/dev/reco-engine-adv && source .venv/bin/activate
-pip install statsmodels
+python -m pip install -r analysis/requirements-metrics.txt
 ```
 
-**`analysis/ab_test.py`**:
-
-```python
-import sys
-
-from google.cloud import bigquery
-from statsmodels.stats.proportion import (
-    proportions_ztest, proportion_confint, confint_proportions_2indep)
-
-PROJECT = "reco-engine-adv"
-bq = bigquery.Client(project=PROJECT)
-
-q = f"""
-WITH clicks AS (
-  SELECT DISTINCT impression_id
-  FROM `{PROJECT}.reco.feedback` WHERE event = 'click'
-)
-SELECT
-  i.variant,
-  COUNT(*) AS n,
-  COUNTIF(c.impression_id IS NOT NULL) AS clicks,
-  COUNTIF(i.served_by = 'popular') AS fallbacks
-FROM `{PROJECT}.reco.impressions` i
-LEFT JOIN clicks c USING (impression_id)
-GROUP BY variant
-"""
-d = {r["variant"]: dict(r) for r in bq.query(q).result()}
-
-missing = [v for v in ("control", "treatment") if v not in d]
-if missing:
-    sys.exit(f"no impressions for {missing} — run the Phase 12 simulator longer")
-
-t, c = d["treatment"], d["control"]
-tc, tn = t["clicks"], t["n"]
-cc, cn = c["clicks"], c["n"]
-if min(tn, cn) < 100:
-    print(f"WARNING: only {min(tn, cn)} impressions in the smaller arm — "
-          f"any result here is noise. Run more rounds.\n")
-
-t_ctr, c_ctr = tc / tn, cc / cn
-stat, pval = proportions_ztest([tc, cc], [tn, cn])
-t_lo, t_hi = proportion_confint(tc, tn, method="wilson")
-c_lo, c_hi = proportion_confint(cc, cn, method="wilson")
-d_lo, d_hi = confint_proportions_2indep(tc, tn, cc, cn, compare="diff")
-
-print(f"control    CTR: {c_ctr:.4f}  ({cc}/{cn})   95% CI [{c_lo:.4f}, {c_hi:.4f}]")
-print(f"treatment  CTR: {t_ctr:.4f}  ({tc}/{tn})   95% CI [{t_lo:.4f}, {t_hi:.4f}]")
-print()
-print(f"absolute difference: {t_ctr - c_ctr:+.4f}   95% CI [{d_lo:+.4f}, {d_hi:+.4f}]")
-print(f"relative lift:       {t_ctr / c_ctr - 1:+.1%}")
-print(f"z = {stat:.3f}   p = {pval:.5f}")
-print("SIGNIFICANT at alpha=0.05" if pval < 0.05 else
-      "not yet significant — run the simulator for more samples")
-print()
-print(f"cold-start fallbacks inside treatment: {t['fallbacks']}/{tn} "
-      f"({t['fallbacks'] / tn:.1%}) — kept IN the numbers above (intent-to-treat)")
-```
+Use the checked-in `analysis/ab_test.py`; repeated impressions from one user must not be treated as independent observations. For this repository's audited historical snapshot, the default fixture already contains the sanitized per-user counts:
 
 ```bash
-python analysis/ab_test.py
+python analysis/ab_test.py \
+  --json-out analysis/ab_test_metrics_2026-08-17.json
 ```
+
+For a fresh build, refresh the sanitized fixture from BigQuery using the cutoff pair recorded in Phase 12, then evaluate that exact snapshot:
+
+```bash
+python analysis/ab_test.py \
+  --refresh-from-gcp \
+  --cutoff 'YOUR_EXACT_CUTOFF' \
+  --cutoff-impression-id 'YOUR_CUTOFF_IMPRESSION_ID' \
+  --json-out analysis/ab_test_metrics.json
+```
+
+The script performs and records four things:
+
+1. verifies that each `user_id` appears in one arm only;
+2. reports the **primary** equal-weight mean per-user CTR difference, Welch 95 % CI, t, degrees of freedom and p-value;
+3. reports aggregate impression CTR as **descriptive** totals;
+4. fits an impression-weighted linear probability model with standard errors clustered by user as a secondary sensitivity check.
+
+The refresh writes `analysis/fixtures/verified_snapshot.json.gz`, containing only synthetic IDs, numeric vectors/category labels and per-user counts. Later runs reproduce offline without GCP credentials. The checked JSON records the fixture hashes, environment and method.
 
 ## Step 13.3 — Say the caveats before anyone asks
 
-> **The headline claim:** *"Treatment lifted CTR X % over a popular-items control — absolute difference d, 95 % CI [lo, hi], z = …, p = …, significant at 95 %."* Then earn the rest of the points by **volunteering the caveats**:
-> - **The CI that matters is on the difference**, not on either arm alone. Two overlapping per-arm CIs do *not* imply a non-significant difference — a genuinely common mistake, which is why `confint_proportions_2indep` is in the script.
-> - **Peeking / early stopping.** Running the test repeatedly and stopping the moment p dips below 0.05 inflates your false-positive rate badly. Fix the sample size first, then look.
-> - **Randomization unit.** You randomized per **user** (the sha256 hash), not per impression. Per-impression randomization would show the same user both arms and break independence.
+> **The headline claim:** *"Among synthetic users, treatment changed mean per-user CTR by d percentage points versus the popular-items control (Welch 95 % CI [lo, hi], t = …, p = …)."* Then volunteer the caveats:
+> - **The randomization unit is the user.** Equal-weight per-user CTR is the primary estimand. The raw impression totals are descriptive because users repeat.
+> - **The CI that matters is on the difference**, not on either arm alone.
+> - **Cutoff provenance.** Record the stopping rule and cutoff before outcome analysis. The bundled fixture reproduces the historical 3,004-impression snapshot reported in repository history; that history does not show that the stopping rule was fixed before outcomes were examined.
 > - **Intent-to-treat.** Cold-start fallbacks stay in the treatment numbers. Dropping them because they "aren't really treatment" is per-protocol analysis of a non-random subgroup — and it biases the result in your favour, which is exactly why it's tempting.
-> - **Statistical vs practical significance.** With enough traffic, everything is significant. The effect size and its CI are what a business decides on.
+> - **Synthetic population.** The click rule is code you wrote, not observed human behaviour. This validates the experiment pipeline and analysis, not a product-growth claim.
+> - **Statistical vs practical significance.** The effect size and its CI matter more than a thresholded verdict.
 
-✅ **Checkpoint 13:** a lift number with a p-value, a confidence interval **on the difference**, an explicit significant/not-yet verdict, and a stated fallback rate.
+✅ **Checkpoint 13:** a user-level effect with a CI and p-value, descriptive impression totals, a cluster-robust sensitivity result, a stated fallback rate, and a machine-readable offline reproduction artifact.
 
 ---
 
@@ -2495,7 +2466,7 @@ TF_USE_LEGACY_KERAS=1 PROJECT=reco-engine-adv python training/train.py
 # 2) push the new item vectors into the LIVE index
 python featurestore/refresh_index.py "$INDEX"
 
-# 3) gate: did offline recall survive the retrain?
+# 3) diagnostic: did preferred-category consistency survive the retrain?
 python featurestore/test_retrieval.py "$INDEX_ENDPOINT"
 ```
 
@@ -2529,11 +2500,11 @@ User vectors refresh with no extra step — `train.py` appends to `user_embeddin
 >
 > At portfolio scale: run steps 1 and 2 back to back and don't run the simulator during the gap. In production you'd solve it properly with **index aliasing** (build the new index alongside the old one, swap the alias atomically once both halves are ready) — which is why "blue/green index swaps" is in the "what I'd do next" list, and why being able to explain *this specific failure mode* is worth more than the fix itself.
 >
-> **And the reason you'd never notice it from your dashboard:** the BQML ranker's strongest feature, `same_category`, is built from the *feature store* (`top_category` × `category`), not from embeddings. So when the embedding spaces disagree, stage 2 keeps working perfectly and quietly rescues roughly a fifth of the garbage stage 1 hands it. Retrieval quality falls toward chance; served quality merely *sags*. Force the two spaces apart deliberately — rebuild the index from a stale `items.json` while fresh user vectors sit in BigQuery — and measure both stages: preferred-category share at retrieval collapses toward the 20 % random baseline, while the served top-10 stays high enough that a dashboard watching *it* would barely flinch. **Monitor stage-1 recall separately, or this bug is invisible to you.**
+> **And the reason you'd never notice it from your dashboard:** the BQML ranker's strongest feature, `same_category`, is built from the *feature store* (`top_category` × `category`), not from embeddings. So when the embedding spaces disagree, stage 2 keeps working perfectly and quietly rescues roughly a fifth of the garbage stage 1 hands it. Retrieval quality falls toward chance; served quality merely *sags*. Force the two spaces apart deliberately — rebuild the index from a stale `items.json` while fresh user vectors sit in BigQuery — and measure both stages: preferred-category share at retrieval collapses toward the 20 % random baseline, while the served top-10 stays high enough that a dashboard watching *it* would barely flinch. **Monitor the stage-1 preferred-category score separately, or this bug is invisible to you.**
 
-## Step 15.3 — Wrap the loop in a Vertex AI Pipeline with a recall gate (~2 hrs)
+## Step 15.3 — Wrap the loop in a Vertex AI Pipeline with a category-consistency gate (~2 hrs)
 
-The three commands in 15.2 are a *procedure you remember to run correctly*. This turns them into a **KFP v2 pipeline on Vertex AI** with a `dsl.If` gate in the middle: the new embeddings only reach the live index if they pass an offline recall check. If they don't, the pipeline stops before the upsert and the index keeps serving the old, working vectors.
+The three commands in 15.2 are a *procedure you remember to run correctly*. This turns them into a **KFP v2 pipeline on Vertex AI** with a `dsl.If` gate in the middle: the new embeddings only reach the live index if they pass a synthetic preferred-category top-K consistency check. If they don't, the pipeline stops before the upsert and the index keeps serving the old, working vectors.
 
 It's the same conditional-deploy pattern as the predictive-maintenance guide's Phase 7, with a different metric in the gate.
 
@@ -2543,7 +2514,7 @@ The obvious gate is *"run `test_retrieval.py` after training; promote if the sco
 
 `test_retrieval.py` queries the **live index** — whose item vectors are still from the *previous* run — using the **new** user vectors from BigQuery. That is precisely the consistency window described in 15.2: two different embedding spaces. It would score ~17 % (chance) after **every** retrain, good or bad, and the gate would never open. A gate wired to that metric isn't strict; it's broken.
 
-So the evaluator must score **off-index**: brute-force the *new* item vectors against the *new* user vectors, in memory. 500 items × 32 dims is a matrix multiply — 16,000 multiply-adds, sub-millisecond. Same metric (preferred-category share in top-10), same ground truth, one self-consistent embedding space. That's `evaluate.py` below. (This is the same "ANN exists to make retrieval *scale*, not to make it *work*" observation the demo layer leans on — here it buys you an evaluation that doesn't depend on the thing you're trying to gate.)
+So the evaluator must score **off-index**: brute-force the *new* item vectors against the *new* user vectors, in memory. At this synthetic scale, 500 items × 32 dimensions is a small local matrix multiply. The metric is preferred-category share in the top 10, using one self-consistent embedding space. That is a wiring check, not held-out ranking quality. That's `evaluate.py` below. (This is the same "ANN exists to make retrieval *scale*, not to make it *work*" observation the demo layer leans on — here it buys you an evaluation that doesn't depend on the thing you're trying to gate.)
 
 Second decision: **the gate rule is "don't promote a regression," not "only promote an improvement."** Strict improvement sounds rigorous and is a trap — once the model saturates on this data, a perfectly healthy retrain lands within noise of the previous run, and a strict rule means you never promote again. The rule below passes if the score clears an absolute floor **and** hasn't dropped more than a small margin below the reigning champion. Being able to explain *why* the obvious rule is wrong is the point here.
 
@@ -2568,7 +2539,7 @@ From here on: **`.venv-kfp` compiles and submits. `.venv` is not used in this st
 **`pipelines/evaluate.py`**:
 
 ```python
-"""Offline recall gate. Scores the FRESH embedding space (new item vectors from GCS
+"""Synthetic category-consistency gate. Scores the FRESH embedding space (new item vectors from GCS
 x new user vectors from BigQuery) by brute force — deliberately never touching the live
 index, whose item vectors are still from the previous run. Scoring against the index here
 would measure the consistency window, not the model, and would return chance every time."""
@@ -2585,10 +2556,10 @@ BUCKET = "reco-engine-adv-artifacts"          # EU multi-region — the canonica
 ITEMS_BLOB = "embeddings/items.json"
 CHAMPION_BLOB = "eval/champion.json"          # the reigning score; written only on promote
 TOP_K = 10
-N_USERS = 50
+N_USERS = 300
 
-FLOOR = float(os.environ.get("RECALL_FLOOR", "0.35"))    # absolute minimum; 0.20 = chance
-MARGIN = float(os.environ.get("RECALL_MARGIN", "0.03"))  # tolerated regression vs champion
+FLOOR = float(os.environ.get("CATEGORY_SCORE_FLOOR", "0.35"))
+MARGIN = float(os.environ.get("CATEGORY_SCORE_MARGIN", "0.03"))
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--decision-out", required=True)
@@ -2779,7 +2750,7 @@ def train():
 
 @dsl.container_component
 def evaluate(decision: dsl.OutputPath(str), score: dsl.OutputPath(float)):
-    """Brute-force offline recall on the FRESH embedding space. Emits promote/hold."""
+    """Brute-force preferred-category consistency on the FRESH embedding space."""
     return dsl.ContainerSpec(
         image=IMAGE,
         command=["python", "/app/evaluate.py"],
@@ -2805,8 +2776,8 @@ def hold(score: float):
 
 @dsl.pipeline(
     name="reco-retrain",
-    description="Retrain the two-tower; promote to the live index only if offline "
-                "recall did not regress.",
+    description="Retrain the two-tower; promote only if synthetic category "
+                "consistency did not regress.",
 )
 def reco_retrain(index: str):
     t = train()
@@ -2817,12 +2788,12 @@ def reco_retrain(index: str):
 
     e = evaluate().after(t)
     e.set_env_variable("PROJECT", PROJECT)
-    e.set_env_variable("RECALL_FLOOR", "0.35")
-    e.set_env_variable("RECALL_MARGIN", "0.03")
+    e.set_env_variable("CATEGORY_SCORE_FLOOR", "0.35")
+    e.set_env_variable("CATEGORY_SCORE_MARGIN", "0.03")
     e.set_caching_options(False)
 
     # ── The gate ────────────────────────────────────────────────────────────
-    with dsl.If(e.outputs["decision"] == "promote", name="recall-gate"):
+    with dsl.If(e.outputs["decision"] == "promote", name="category-consistency-gate"):
         r = refresh(index=index)
         r.set_env_variable("PROJECT", PROJECT)
         r.set_caching_options(False)
@@ -2885,7 +2856,7 @@ python pipelines/reco_pipeline.py     # compile → pipelines/reco_retrain.json
 python pipelines/run_pipeline.py      # submit → blocks until done
 ```
 
-It prints a console URL; open it and watch `train → evaluate → recall-gate → refresh` light up as a real DAG. `pipeline finished: 4` is `PIPELINE_STATE_SUCCEEDED`. Expect 10–20 minutes, most of it provisioning.
+It prints a console URL; open it and watch `train → evaluate → category-consistency-gate → refresh` light up as a real DAG. `pipeline finished: 4` is `PIPELINE_STATE_SUCCEEDED`. Expect 10–20 minutes, most of it provisioning.
 
 > **The pipeline runs as `trainer@`, and needs no roles it doesn't already have** — Phase 1 gives it `aiplatform.user`, `bigquery.dataEditor`, `bigquery.jobUser`, `bigquery.readSessionUser`, `storage.objectAdmin`, `artifactregistry.reader`, and **`logging.logWriter`**. That last one was added in v6 *because of this step*: without it the container's stdout is discarded, and a failing task reports nothing but `The replica workerpool0-0 exited with a non-zero status of 1` over an empty log. If you built `infra/` from an older copy, add it and `terraform apply` **before** your first run — see the box in Phase 1.
 
@@ -2897,14 +2868,14 @@ It prints a console URL; open it and watch `train → evaluate → recall-gate �
 
 **A gate that has only ever said *yes* is not a gate; it is a decoration.** Make it say no.
 
-Set `RECALL_FLOOR` to an impossible `"0.99"` in `reco_pipeline.py`, then recompile and re-run:
+Set `CATEGORY_SCORE_FLOOR` to an impossible `"0.99"` in `reco_pipeline.py`, then recompile and re-run:
 
 ```bash
 source .venv-kfp/bin/activate
 python pipelines/reco_pipeline.py && python pipelines/run_pipeline.py
 ```
 
-The `recall-gate` branch should go **unexecuted**, `gate-closed` should run `hold.py`, and the pipeline should end **FAILED** with the message in the logs. **Screenshot that DAG** — a red pipeline that refused to ship a bad model is a far better portfolio artefact than a green one that shipped a good one.
+The `category-consistency-gate` branch should go **unexecuted**, `gate-closed` should run `hold.py`, and the pipeline should end **FAILED** with the message in the logs. **Screenshot that DAG** — a red pipeline that refused to ship a bad model is a far better portfolio artefact than a green one that shipped a good one.
 
 Then set the floor back to `0.35`, recompile, and re-run. Do it in that order: the failed run left new user vectors in BigQuery with no matching index upsert, so you are *inside the consistency window* until the successful run closes it.
 
@@ -3219,23 +3190,23 @@ gh repo create reco-engine-adv --public --source=. --remote=origin --push
 
 **Goal:** Make a stranger understand what you built, and believe the numbers, in one screen.
 
-- **README headline = the A/B result:** *"Personalized recommendations lifted CTR X % over a popular-items baseline (absolute difference d, 95 % CI [lo, hi], z = …, p < …)."* Immediately under it, the offline metric: *"preferred-category share in top-10: Y % vs a 20 % random baseline."* Two numbers, both checkable, both honest.
-  > **State the caveats in the README, not just in conversation.** The fallback rate, the peeking caveat, the fact that the simulator's click model is *your* assumption about user behaviour and not a measured one. A project that names its own limitations is one you can trust the rest of; a project that doesn't is one you have to go looking through.
+- **Lead with the audited synthetic result:** *"In the historical 3,004-impression snapshot, 300 synthetic users had mean per-user CTR of 33.59 % under personalization versus 8.15 % under the popular-items control: +25.45 percentage points (Welch 95 % CI +22.40 to +28.50)."* Follow it with the all-300-user latent-category consistency check, clearly named as synthetic category Precision@10 / category-NDCG@10 — not held-out Recall@K.
+  > **State the caveats in the README, not just in conversation.** Name the fallback rate, repeated impressions, historical-cutoff provenance, the absence of a held-out interaction split, and the fact that the simulator's click model is your assumption rather than observed behaviour.
 - **Architecture diagram** + one sentence per component.
-- **The feature-store paragraph** — training-serving skew, point-in-time joins, the append-only snapshot design, and the BigQuery-vs-Bigtable economics with the per-node-hour floor called out explicitly. Quote the Phase 6.2 measurement as a **pair, with the measurement point named**, never as one number: *"cold read 216 ms, warm median 103 ms over 20 reads from a laptop outside GCP."* A lone cold read says Bigtable is slow **and** expensive and collapses your own argument; a lone median invites "over how many reads, from where?". The pair answers both before they're asked.
+- **The feature-store paragraph** — training-serving skew, point-in-time joins, the append-only snapshot design, and the BigQuery-vs-Bigtable economics with the per-node-hour floor called out explicitly. Do not publish the old Bigtable timings: no machine-readable run artifact was committed. A future benchmark must include raw output, measurement point, hardware, warmup and repeat count.
 - **The retrieve→rank paragraph** — why two stages, what each optimizes for.
 - **The least-privilege paragraph** *(short, and worth more than its length)* — every component runs as its own service account with an explicit role list, and the training job proved why that's non-trivial: `train.py` passed on the laptop and 403'd on Vertex, because `.to_dataframe()` silently reaches for the **BigQuery Storage Read API**, which is a *third* permission that neither `jobUser` nor `dataEditor` grants. "Works as me, fails as the robot" is the single most common shape of GCP incident, and having *hit* it, diagnosed it from the job's logs, and pinned the fix in Terraform is a better story than any role list.
 - **The experiment-design paragraph** — per-user hash randomization, append-only feedback (and *why*: the streaming buffer), intent-to-treat, the fallback tagging.
-- **The gated-retraining paragraph** *(new, and it earns its place)* — the retraining pipeline evaluates the new embeddings **off-index**, by brute force, and only upserts into the live Vector Search index if offline recall hasn't regressed against a stored champion score. Say *why* the obvious design fails: scoring the new model against the live index right after a retrain measures the **consistency window** (new user vectors vs. old item vectors), not the model, and returns chance every time — so a gate wired to it can never open. Then name what the gate does **not** cover: user vectors are published to BigQuery unconditionally, so a *closed* gate still leaves the system mid-window. "Here is the gate, here is precisely what it doesn't protect, here is what would close it" is a description of a system someone has actually operated. A gate presented as airtight is a gate nobody has tested.
+- **The gated-retraining paragraph** *(new, and it earns its place)* — the pipeline evaluates fresh embeddings **off-index**, by brute force, and only upserts when its preferred-category top-K consistency score has not regressed against a stored champion. Call this a synthetic wiring gate, not held-out Recall@K. Explain why scoring fresh user vectors against old live item vectors measures the **consistency window**, not the model, and then name what the gate does not cover: user vectors are still published to BigQuery before the gate decides.
 - **Repo layout:** `infra/`, `generator/`, `dataflow/`, `featurestore/`, `training/`, `pipelines/`, `api/`, `analysis/`, `reco_dbt/`, `.github/workflows/`.
-- **"What I'd do next"** — a real-time user tower on an endpoint (session freshness); true point-in-time feature retrieval for training; sequence models (transformers) for session-based recs; multi-armed bandits instead of a fixed 50/50 split; Bigtable online serving at real QPS; **Vector Search index aliasing for blue/green swaps** and **staging user vectors behind the recall gate** (the two halves of the Phase 15 consistency window — the retraining pipeline currently gates the index but not the user-embedding table, so a rejected model still lands half its output in production); scheduling the retraining pipeline on Cloud Scheduler instead of running it by hand.
+- **"What I'd do next"** — a real-time user tower on an endpoint (session freshness); true point-in-time feature retrieval for training; sequence models (transformers) for session-based recs; multi-armed bandits instead of a fixed 50/50 split; Bigtable online serving at real QPS; **Vector Search index aliasing for blue/green swaps** and **staging user vectors behind the category-consistency gate** (the two halves of the Phase 15 consistency window — the retraining pipeline currently gates the index but not the user-embedding table, so a rejected model still lands half its output in production); scheduling the retraining pipeline on Cloud Scheduler instead of running it by hand.
 
 **The one-sentence summary:**
-> "I built a real-time recommender on GCP — interactions stream through Dataflow into append-only BigQuery feature tables registered in Vertex AI Feature Store; a two-tower TFRS model produces embeddings served from Vector Search in milliseconds; a boosted-tree ranker orders the candidates; a hash-randomized A/B test measured a statistically significant CTR lift over a popular-items baseline; and a Vertex AI Pipeline retrains on fresh events and upserts new embeddings into the live index only when a recall gate says they haven't regressed — all Terraform-provisioned and deployed via keyless GitHub Actions."
+> "I built a production-shaped recommender on GCP: Dataflow streams synthetic interactions into append-only BigQuery feature tables, a two-tower model and Vector Search produce candidates, a boosted-tree ranker orders them, a per-user randomized simulation is analyzed at the user level with an offline reproducible fixture, and a Vertex AI Pipeline gates embedding promotion on a synthetic category-consistency check — all Terraform-provisioned and deployed through keyless GitHub Actions, with no serving-latency claim unless its benchmark artifact is checked in."
 
 That one sentence hits streaming data engineering, feature stores, deep retrieval, ANN serving, two-stage ranking, experimentation, statistics, MLOps, IaC, and CI/CD.
 
-✅ **Checkpoint 18:** a stranger reads the README and gets the architecture, the significant result, and the lifecycle story in one screen.
+✅ **Checkpoint 18:** a stranger reads the README and gets the architecture, the auditable synthetic result, its limits, and the lifecycle story in one screen.
 
 ---
 

@@ -1,6 +1,6 @@
 # Real-Time Recommender Engine on Google Cloud
 
-**A production-shaped recommendation system, built end to end: events stream in, a neural retrieval model learns what people like, an approximate-nearest-neighbour index serves candidates in milliseconds, a boosted-tree model ranks them, and a live A/B test measures whether any of it actually worked.**
+**A production-shaped recommendation system, built end to end: events stream in, a neural retrieval model learns what people like, an approximate-nearest-neighbour index finds candidates, a boosted-tree model ranks them, and a live A/B test measures whether any of it actually worked.**
 
 > ### ℹ️ This is a portfolio project. Read this bit first.
 >
@@ -20,7 +20,7 @@ Imagine an online shop with 500 products and 300 shoppers. Every time somebody v
 2. **Learns what each person is into** — not by asking them, but by watching. A neural network reads the history and places every user *and* every product on the same invisible map, so that "people who like this" and "products like that" end up standing near each other. (These map coordinates are called **embeddings**.)
 3. **Finds the nearest products to you on that map, fast** — using a Vector Search index, which is the same technology that powers "chat with your documents" retrieval.
 4. **Re-orders those candidates carefully** with a second, more expensive model that knows things the map doesn't (Is this in your favourite category? Is it popular? How many things have you clicked?).
-5. **Runs an experiment on itself.** Half the users get personalized recommendations; half get "here are our best sellers." The system logs what everybody clicked, and then does the statistics properly — a two-proportion z-test with a confidence interval — to answer: *is the personalized version genuinely better, or did we get lucky?*
+5. **Runs an experiment on itself.** Half the users get personalized recommendations; half get "here are our best sellers." Because assignment is by user, the primary analysis compares one CTR per user; a second model keeps impression weighting but clusters its uncertainty by user.
 6. **Watches itself for rot.** If the incoming data starts to look different from the data the model was trained on, a drift query notices. A retraining pipeline can rebuild the model — but it will **refuse to ship the new version into the live index** unless the new model can prove it hasn't got worse.
 
 That last point is the one I'd point at first. A retraining pipeline that always promotes is a retraining pipeline that will, one day, quietly promote a broken model.
@@ -66,7 +66,7 @@ That last point is the one I'd point at first. A retraining pipeline that always
                  └───────────────────┬────────────────────────────┘
                                      │ impressions + feedback (append-only)
                                      ▼
-        z-test lift analysis · drift monitor · retrain → gated index upsert
+       user-level lift analysis · drift monitor · retrain → gated index upsert
                                      ▼
                        dbt experiment marts + Looker Studio
 ```
@@ -77,45 +77,46 @@ Everything above is provisioned by **Terraform** and deployed by **GitHub Action
 
 ## Results
 
-Every number below was printed by a script in this repository, and every one of them is reproducible by re-running it. Appendix A of [`TECHNICAL_DOCUMENTATION.md`](./TECHNICAL_DOCUMENTATION.md) maps each claim to the script that produces it.
+This audit inspected the repository at commit `23cf39e41268c04888ad7b8be7215433ce76c44b`; the checked outputs also record the exact cloud-object generation, hashes and training timestamp. The figures reproduce offline from the sanitized synthetic fixture [`analysis/fixtures/verified_snapshot.json.gz`](./analysis/fixtures/verified_snapshot.json.gz), so no GCP credentials are needed. The fixture contains only synthetic IDs, vectors, category labels and per-user counts. Use Python 3.12 and install the pinned dependencies with `python -m pip install -r analysis/requirements-metrics.txt`.
 
 ### Online — the A/B test
 
-Users were split by a deterministic hash of their ID: half were served personalized recommendations, half were served the best-selling items. `python analysis/ab_test.py`:
+Users were assigned by a deterministic hash of `user_id`: 153 saw personalized recommendations and 147 saw the best-selling items. Each user generated 2–19 impressions, so treating all 3,004 impressions as independent would understate uncertainty. Reproduce the user-level analysis with `python analysis/ab_test.py --json-out analysis/ab_test_metrics_2026-08-17.json`; the checked result is in [`analysis/ab_test_metrics_2026-08-17.json`](./analysis/ab_test_metrics_2026-08-17.json).
 
-| Arm | Impressions | Clicks | CTR | 95 % CI |
-|-----|------------:|-------:|----:|---------|
-| control (popular items)  | 1,449 | 121 | **8.35 %**  | [7.03 %, 9.89 %] |
-| treatment (personalized) | 1,555 | 520 | **33.44 %** | [31.14 %, 35.82 %] |
+| Arm | Users | Mean per-user CTR | SD |
+|-----|------:|------------------:|---:|
+| control (popular items)  | 147 | **8.15 %** | 11.47 % |
+| treatment (personalized) | 153 | **33.59 %** | 15.17 % |
 
-**Absolute difference +25.09 pp**, 95 % CI **[+22.32, +27.81]** · z = **16.77** · p < **0.00001** · significant at α = 0.05.
+Primary result: **mean per-user CTR difference +25.45 pp**, Welch 95 % CI **[+22.40, +28.50]** · t = **16.43** · df = **282.56** · p = **4.69 × 10⁻⁴³**.
+
+For reference, the aggregate impression CTRs were 8.35 % (121 / 1,449) and 33.44 % (520 / 1,555), a raw +25.09 pp difference. Those totals are descriptive, not an independent-impressions test. An impression-weighted linear probability model with standard errors clustered by user gives **+25.09 pp**, 95 % CI **[+22.14, +28.04]**, p = **3.20 × 10⁻⁶²**.
+
+The fixture ends at `2026-07-14T09:46:09.789689Z`, the last row in the historical 3,004-impression snapshot reported in repository history. That reproduces the original result and excludes 128 later rows; it is not evidence that the cutoff was preregistered. Use `--refresh-from-gcp` to rebuild the fixture with read-only queries.
 
 Cold-start fallbacks inside the treatment arm: **0 / 1,555 (0.0 %)** — every treated user had an embedding, so the arm is measuring what it claims to. Fallback-served impressions would have stayed in the treatment arm regardless (intent-to-treat); reporting the rate is what makes that honest rather than convenient.
 
-The absolute difference is the result. The relative lift is **+300 %**, and that number is close to meaningless: the users are simulated, and a click model that rewards the preferred category strongly will produce a large ratio against a popularity baseline more or less by construction. **What the test establishes is the method — randomization, a real baseline, an interval, a p-value, a pre-decided stopping point — not the magnitude.** A recommender that beat popularity by 300 % on real traffic would be a recommender you should be suspicious of.
+The absolute difference is the useful scale. The descriptive relative lift is about **+300 %**, and that number is close to meaningless: the users are simulated, and the generator rewards each user's preferred category strongly. This establishes that the experiment code separates arms and analyzes the user-level assignment correctly; it is not evidence of real-world product lift.
 
-### Offline — does retrieval actually retrieve?
+### Offline — category recovery, not held-out recall
 
-`python featurestore/test_retrieval.py "$INDEX_ENDPOINT"`, over 50 sampled users × top-10 = **500 retrieved slots**:
+`analysis/reproduce_retrieval_metrics.py` reads the item/user vectors, catalogue categories and hidden synthetic preferences from the same fixture. Reproduce the checked [`analysis/retrieval_metrics_2026-08-17.json`](./analysis/retrieval_metrics_2026-08-17.json) with `python analysis/reproduce_retrieval_metrics.py --json-out analysis/retrieval_metrics_2026-08-17.json`. Use `--refresh-from-gcp` only when intentionally replacing the fixture.
 
-**Preferred-category share in the top-10: 100.0 %**, against a **20 %** random baseline (5 categories, uniform).
+Protocol: all 300 users, all 500 items as candidates, exact dot-product ranking, `K=10`, and binary relevance defined as `item.category == user.preferred_category`.
 
-The simulated users have a hidden category preference that appears in **no training feature** — the two-tower model sees only `(user_id, item_id)` pairs, never a category. It learned from **16,634 positive interactions** across **300 users** and **500 items**. So the embedding space recovered that hidden structure on its own, from co-occurrence alone, rather than memorizing popularity. That is the claim this metric is making, and it is the one worth making.
+| Synthetic consistency check | Result |
+|---|---:|
+| preferred-category Precision@10 | **1.0000** (3,000 / 3,000 slots) |
+| preferred-category NDCG@10 | **1.0000** |
+| expected random Precision for this user/category mix | **0.200233** |
 
-**Read the 100 % correctly, though.** A perfect score is not evidence of a strong model; it is evidence of an *easy problem*. The generator's click model concentrates each user's interactions inside their preferred category, which makes the interaction graph nearly block-diagonal — and a two-tower model will separate blocks like that without breaking a sweat. What 100 % establishes is that **the pipeline is wired correctly end to end**: the vectors that came out of training are the vectors that went into the index, the index is being queried with the right user's embedding, and the distance measure matches the training objective. A single wrong dimension, a stale mirror, or a dot-product-vs-cosine mismatch anywhere in that chain would have dragged this number toward 20 %. It is a *correctness* check that happens to be expressed as a quality metric. Real catalogues, real users, and overlapping tastes do not score 100 %.
+The snapshot contains 32-dimensional vectors trained from **16,634 positive events** (**14,211 distinct user-item pairs**) across **300 users** and **500 items**. Category is not a training feature, so this confirms that the saved user and item vectors line up and recover the simulator's deliberately simple category blocks.
 
-### Serving — Bigtable online feature reads
+It does **not** establish real recommendation quality. The training query consumes every click, add-to-cart and purchase; all 16,634 positives predate the saved model, and the repository records no holdout split. Conventional held-out Recall@10 and NDCG@10 are therefore **unavailable**. Publishing them from this snapshot would be data leakage.
 
-`python featurestore/online_store_demo.py`, measured **from a laptop outside GCP** into `europe-west3`:
+### Serving latency — current limits
 
-| | |
-|---|---|
-| cold read (channel setup + TLS + first RPC) | **216.4 ms** |
-| warm read, median | **102.8 ms** |
-| warm read, p95 / min / max | 191.5 / 83.2 / 191.5 ms |
-| reads | **n = 20 successful / 20 attempts** (0 transient failures) |
-
-*Quote that as a pair, with the measurement point, or not at all.* The cold read's extra ~110 ms is channel establishment, not the store. The warm median is not Bigtable's latency either — it is a public-internet round trip plus the Feature Store serving API, with the Bigtable lookup a small fraction of it; a client inside the same region sees a different number. What this phase establishes is the **cost floor** of an online store and what it takes to reach one, which is what the BigQuery-vs-Bigtable decision actually turns on.
+The direct Vertex AI Vector Search check could not run on 17 August 2026: the endpoint resource still exists, but `items_v1` is no longer deployed. No current Vector Search latency is claimed. The retrieval JSON includes a local 500-item diagnostic, but that in-process check is not ANN, network or production serving latency and is deliberately not quoted here. The earlier Bigtable figures were removed because no machine-readable run artifact was committed for them.
 
 ---
 
@@ -124,7 +125,7 @@ The simulated users have a hidden category preference that appears in **no train
 Stated plainly, because a system that names its own failure modes is more trustworthy than one that doesn't.
 
 - **The users are synthetic.** A generator script assigns each simulated user a hidden category preference and clicks accordingly. The model recovering that preference proves the *pipeline* works; it says nothing about real human behaviour. The click model is my assumption, not a measurement.
-- **The experiment has a peeking problem if you let it.** The analysis is run once, at a pre-decided stopping point. Repeatedly refreshing a z-test until it goes significant is how you manufacture a false positive; the guide says so in the phase where it would be tempting.
+- **The historical cutoff is not a preregistration record.** It reproduces the 3,004-impression snapshot reported in repository history. Repeatedly choosing a cutoff after looking at results would invalidate the nominal p-value; a real experiment needs a recorded stopping rule or sequential design.
 - **Cold-start items get no embedding.** The two-tower item vocabulary is built from items that were actually interacted with. An item nobody has ever clicked is never retrievable. That is a real property of two-tower retrieval, handled explicitly (not silently) in the export path.
 - **The recall gate protects the index, not the whole system.** The retraining pipeline refuses to upsert regressed item embeddings into the live Vector Search index — but user embeddings are written to BigQuery unconditionally by the training script. A *closed* gate therefore still leaves the system mid-window, with new user vectors and old item vectors. Fixing that properly means staging user vectors behind the same gate and swapping via index aliasing. It is on the list below, not in the code.
 - **The recommender API is public.** No auth, so the load simulator can hit it without auth plumbing. In production this sits behind IAP or an API gateway.
@@ -152,7 +153,7 @@ Stated plainly, because a system that names its own failure modes is more trustw
 | `training/` | Two-tower TFRS model; exports item vectors to GCS and user vectors to BigQuery |
 | `pipelines/` | The Vertex AI (KFP v2) retraining pipeline with the recall gate |
 | `api/` | Cloud Run recommender service: hash-based A/B split, retrieve → rank → top-10 |
-| `analysis/` | Lift analysis (two-proportion z-test), drift queries |
+| `analysis/` | User-level A/B inference, cluster-robust sensitivity check, drift queries |
 | `reco_dbt/` | dbt project: staged impressions → experiment mart, with tests |
 | `.github/workflows/` | Keyless deploy via Workload Identity Federation |
 | [`PUBLIC_BUILD_GUIDE.md`](./PUBLIC_BUILD_GUIDE.md) | **Build the whole thing yourself, from an empty GCP project.** Every command, every failure, in order. |

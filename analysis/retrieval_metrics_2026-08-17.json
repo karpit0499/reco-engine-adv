@@ -1,0 +1,111 @@
+{
+  "environment": {
+    "cpu": "Apple M4 Pro",
+    "machine": "arm64",
+    "packages": {
+      "numpy": "1.26.4"
+    },
+    "platform": "macOS-26.6.1-arm64-arm-64bit",
+    "python": "3.12.10"
+  },
+  "exact_fixture_artifacts": {
+    "category_metrics": {
+      "expected_random_precision_for_sample": 0.20023333333333335,
+      "preferred_category_hits": 3000,
+      "preferred_category_ndcg_at_k_macro": 1.0,
+      "preferred_category_precision_at_k_macro": 1.0,
+      "preferred_category_precision_at_k_micro": 1.0,
+      "preferred_category_recall_at_k_macro": 0.10107579511991277,
+      "retrieved_slots": 3000,
+      "users": 300
+    },
+    "local_latency": {
+      "catalog_items": 500,
+      "dimension": 32,
+      "max_ms": 14.9345,
+      "min_ms": 0.023292,
+      "operation": "NumPy exact dot-product over every item plus stable full sort",
+      "p50_ms": 0.041937,
+      "p95_ms": 2.5585978999999996,
+      "status": "measured_non_serving_diagnostic",
+      "successful_queries": 2000,
+      "timed_queries": 2000,
+      "top_k": 10,
+      "warmup_queries": 100,
+      "warning": "in-process diagnostic; not ANN, network, or production serving latency"
+    }
+  },
+  "fixture": {
+    "compressed_sha256": "aac912e7bdc4aa9cf98450c56bdce65541e4f55eaca710e94ea62138892e9714",
+    "json_sha256": "34e41f3485111cd26610dac4fb26fb1ffaaa8084c8896c6177a6ef259f582eb9",
+    "path": "analysis/fixtures/verified_snapshot.json.gz",
+    "size_bytes": 239010
+  },
+  "fixture_refreshed_from_gcp_this_run": false,
+  "generated_at": "2026-08-17T20:09:49.391458+00:00",
+  "held_out_interaction_metrics": {
+    "all_positive_events_predate_latest_training": true,
+    "ndcg_at_k": null,
+    "reason": "training/train.py queries every click/add_to_cart/purchase without a split, and the saved artifacts contain no recorded held-out positives. Reporting conventional held-out Recall@K or NDCG@K would be data leakage.",
+    "recall_at_k": null,
+    "status": "unavailable"
+  },
+  "invocation": [
+    "python",
+    "analysis/reproduce_retrieval_metrics.py",
+    "--json-out",
+    "analysis/retrieval_metrics_2026-08-17.json"
+  ],
+  "protocol": {
+    "binary_relevance": "1 iff item.category == user.preferred_category; else 0",
+    "candidate_set": "all 500 fixture items",
+    "interpretation": "latent category recovery / saved-space consistency only",
+    "ranking": "exact dot product, descending; fixture item order breaks ties",
+    "split": "none; saved model was trained on every positive interaction",
+    "synthetic_ground_truth": true,
+    "top_k": 10,
+    "users": "all 300 fixture users"
+  },
+  "repository": {
+    "branch": "main",
+    "commit": "23cf39e41268c04888ad7b8be7215433ce76c44b",
+    "commit_role": "repository/model state inspected before audit edits",
+    "url": "https://github.com/karpit0499/reco-engine-adv"
+  },
+  "schema_version": 2,
+  "source_snapshot": {
+    "historical_experiment_snapshot": {
+      "all_impressions_at_refresh": 3132,
+      "cutoff": "2026-07-14T09:46:09.789689Z",
+      "cutoff_impression_id_omitted_from_fixture": true,
+      "cutoff_provenance": "final row in the 3,004-impression snapshot reported in repository history; not evidence of preregistration",
+      "eligible_impressions": 3004,
+      "last_included_at": "2026-07-14T09:46:09.789689+00:00",
+      "later_impressions_excluded": 128
+    },
+    "item_embeddings": {
+      "generation": "1784232128334815",
+      "md5_base64": "KQXBTNH0Rra8Z0zXOue0aA==",
+      "sha256": "92fc5de1bf42b1cae393efcb7bf4ab909238960f72255ee940f7205f21d7fc4a",
+      "size_bytes": 352452,
+      "updated_at": "2026-07-16T20:02:08.432000+00:00",
+      "uri": "gs://reco-engine-adv-artifacts/embeddings/items.json"
+    },
+    "positive_interactions": {
+      "distinct_pairs": 14211,
+      "first_event_at": "2026-07-14T02:53:34.572316+00:00",
+      "items": 500,
+      "last_event_at": "2026-07-14T03:44:43.117654+00:00",
+      "positive_events": 16634,
+      "users": 300
+    },
+    "project": "reco-engine-adv",
+    "user_embeddings": {
+      "trained_at": "2026-07-16T20:02:09.053334+00:00"
+    }
+  },
+  "vector_search": {
+    "reason": "pass --index-endpoint to run the credentialed serving probe",
+    "status": "not_requested"
+  }
+}

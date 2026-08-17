@@ -1,0 +1,100 @@
+{
+  "descriptive_impression_totals": {
+    "control": {
+      "clicks": 121,
+      "ctr": 0.08350586611456176,
+      "impressions": 1449
+    },
+    "raw_absolute_difference": 0.25089927857997196,
+    "raw_relative_lift": 3.0045706996890864,
+    "treatment": {
+      "clicks": 520,
+      "cold_start_fallbacks": 0,
+      "ctr": 0.33440514469453375,
+      "impressions": 1555
+    },
+    "warning": "impressions repeat within user and are not independent"
+  },
+  "design_checks": {
+    "control_users": 147,
+    "max_impressions_per_user": 19,
+    "max_variants_per_user": 1,
+    "min_impressions_per_user": 2,
+    "randomization_unit": "user_id",
+    "treatment_users": 153,
+    "users": 300
+  },
+  "environment": {
+    "packages": {
+      "numpy": "1.26.4",
+      "scipy": "1.17.1",
+      "statsmodels": "0.14.6"
+    },
+    "python": "3.12.10"
+  },
+  "fixture": {
+    "compressed_sha256": "aac912e7bdc4aa9cf98450c56bdce65541e4f55eaca710e94ea62138892e9714",
+    "json_sha256": "34e41f3485111cd26610dac4fb26fb1ffaaa8084c8896c6177a6ef259f582eb9",
+    "path": "analysis/fixtures/verified_snapshot.json.gz",
+    "size_bytes": 239010
+  },
+  "fixture_refreshed_from_gcp_this_run": false,
+  "generated_at": "2026-08-17T20:09:50.510435+00:00",
+  "invocation": [
+    "python",
+    "analysis/ab_test.py",
+    "--json-out",
+    "analysis/ab_test_metrics_2026-08-17.json"
+  ],
+  "primary_user_level": {
+    "comparison": {
+      "absolute_difference": 0.2544781032603251,
+      "difference_95_ci": [
+        0.2239976754569958,
+        0.2849585310636544
+      ],
+      "p_two_sided": 4.6892609346089885e-43,
+      "standard_error": 0.015484914117963065,
+      "welch_df": 282.5623071726773,
+      "welch_t": 16.43393701261289
+    },
+    "control": {
+      "mean_user_ctr": 0.08145634704916312,
+      "sample_sd": 0.11467588939126622,
+      "users": 147
+    },
+    "method": "equal-weight per-user CTR; two-sided Welch t-test",
+    "treatment": {
+      "mean_user_ctr": 0.3359344503094882,
+      "sample_sd": 0.15165558129901013,
+      "users": 153
+    }
+  },
+  "repository": {
+    "commit": "23cf39e41268c04888ad7b8be7215433ce76c44b",
+    "commit_role": "repository/model state inspected before audit edits",
+    "url": "https://github.com/karpit0499/reco-engine-adv"
+  },
+  "scope": {
+    "all_impressions_at_refresh": 3132,
+    "cutoff": "2026-07-14T09:46:09.789689Z",
+    "cutoff_impression_id_omitted_from_fixture": true,
+    "cutoff_provenance": "final row in the 3,004-impression snapshot reported in repository history; not evidence of preregistration",
+    "eligible_impressions": 3004,
+    "last_included_at": "2026-07-14T09:46:09.789689+00:00",
+    "later_impressions_excluded": 128
+  },
+  "secondary_cluster_robust": {
+    "absolute_difference": 0.25089927857996724,
+    "cluster_robust_standard_error": 0.015072025498635287,
+    "clusters": 300,
+    "difference_95_ci": [
+      0.22135865142857272,
+      0.28043990573136174
+    ],
+    "method": "OLS linear probability model on impressions reconstructed from per-user counts; intercept + treatment; cluster covariance by user_id with small-sample correction; asymptotic normal CI/p",
+    "observations": 3004,
+    "p_two_sided": 3.198289681867986e-62,
+    "z": 16.646686180479538
+  }
+}
