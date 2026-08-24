@@ -10,11 +10,10 @@ COPY training/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install --no-cache-dir --no-deps tensorflow-recommenders==0.7.3
 
-# refresh_index.py needs the aiplatform SDK — which will yank protobuf to 6.x and
-# break TensorFlow inside this image, exactly like it did in your venv. Re-assert
-# the pins immediately afterwards. Order matters; do not reorder these two lines.
+# Keep the SDK and TensorFlow on the explicitly tested NumPy/protobuf pair.
+# Re-assert the pins immediately afterwards. Order matters; do not reorder.
 RUN pip install --no-cache-dir "google-cloud-aiplatform==1.165.1"
-RUN pip install --no-cache-dir "protobuf==4.25.9" "numpy==1.26.4"
+RUN pip install --no-cache-dir "protobuf==6.33.6" "numpy==1.26.4"
 
 # Fail the BUILD, not the pipeline at 3am, if the pins didn't survive.
 RUN python -c "import numpy, google.protobuf, tensorflow as tf, tensorflow_recommenders; \

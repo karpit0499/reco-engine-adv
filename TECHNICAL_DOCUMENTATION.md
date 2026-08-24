@@ -192,8 +192,8 @@ meaningful endpoint run has occurred.
 
 ## 10. Dependency and build isolation
 
-Python 3.12 environments are separated by purpose. TensorFlow 2.17/TFRS remains on
-NumPy 1.26 and patched protobuf 4.25.9. The pipeline pins
+Python 3.12 environments are separated by purpose. TensorFlow 2.21/TFRS remains on
+NumPy 1.26 and patched protobuf 6.33.6. The pipeline pins
 `google-cloud-aiplatform==1.165.1` and `google-cloud-storage==3.0.0`, then reasserts the
 TensorFlow-compatible NumPy/protobuf pins. Browser/A-B, API/cloud, and MovieLens/Torch
 benchmark dependencies are independent.
