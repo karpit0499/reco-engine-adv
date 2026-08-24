@@ -31,7 +31,7 @@ const tally = {
 
   let sid = store.getItem('reco.sid');
   if (!sid) {
-    sid = 'v' + Math.random().toString(36).slice(2, 10);
+    sid = 'v' + crypto.randomUUID().replaceAll('-', '');
     store.setItem('reco.sid', sid);
   }
   const { hex, variant } = await C.variant(sid);
