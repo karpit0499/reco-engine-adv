@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "candidate_policy": "one predeclared representative configuration per family; no hyperparameter sweep",
+  "seed": 20260820,
+  "batch_users": 192,
+  "models": [
+    {
+      "name": "popularity",
+      "params": {}
+    },
+    {
+      "name": "item_knn",
+      "params": {
+        "neighbors": 100
+      }
+    },
+    {
+      "name": "als",
+      "params": {
+        "factors": 24,
+        "iterations": 4,
+        "alpha": 20.0,
+        "regularization": 0.05
+      }
+    },
+    {
+      "name": "bpr",
+      "params": {
+        "factors": 32,
+        "epochs": 5,
+        "batch_size": 8192,
+        "learning_rate": 0.03,
+        "regularization": 0.0001
+      }
+    },
+    {
+      "name": "two_tower",
+      "params": {
+        "factors": 32,
+        "epochs": 5,
+        "batch_size": 8192,
+        "negatives": 3,
+        "learning_rate": 0.01,
+        "regularization": 0.0001
+      }
+    },
+    {
+      "name": "retrieval_reranker",
+      "params": {
+        "retrieval_k": 200,
+        "positive_samples_per_user": 20,
+        "negative_ratio": 2,
+        "logistic_c": 1.0
+      }
+    }
+  ]
+}

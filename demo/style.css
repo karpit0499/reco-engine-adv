@@ -56,6 +56,17 @@ body::before {                    /* the light table: a single, very quiet gradi
 
 .wrap { position: relative; z-index: 1; max-width: 1240px; margin: 0 auto; padding: 0 var(--step) 96px; }
 
+.data-banner {
+  margin: 0 calc(-1 * var(--step)); padding: 12px var(--step);
+  display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+  background: var(--hot); color: #fff;
+  border-bottom: 3px solid var(--ink);
+}
+.data-banner strong {
+  font-family: var(--mono); font-size: 13px; letter-spacing: .12em; white-space: nowrap;
+}
+.data-banner span { font-weight: 500; }
+
 /* ── Masthead ─────────────────────────────────────────────────────────────── */
 .top {
   display: flex; align-items: center; justify-content: space-between;

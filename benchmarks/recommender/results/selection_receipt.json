@@ -1,0 +1,58 @@
+{
+  "archive_sha256": "a6898adb50b9ca05aa231689da44c217cb524e7ebd39d264c56e2832f2c54e20",
+  "benchmark_code_sha256": "55dab1aff18743331f6f38b36219540bcdc28c2c8cd293845c08a79fd262735b",
+  "config_sha256": "5018d44f164d71d4abfa0d919a47fb4052e75a1ab2c34dcec2a3bfac2ea1b4e5",
+  "created_at": "2026-08-20T20:39:35.894638+00:00",
+  "primary_metric": "ndcg_at_10",
+  "protocol_sha256": "d8d59f14ed7e2427791c705866aae1b807d5f7eed7840b4ee2e4a574c3ee0932",
+  "receipt_sha256": "3ed32e918dd4cb96eb96be9b0c9bd1ddc09d0ace1bd4ef6ea48a212eebbee42d",
+  "schema_version": 1,
+  "selected_model": "als",
+  "selected_model_params": {
+    "alpha": 20.0,
+    "factors": 24,
+    "iterations": 4,
+    "regularization": 0.05
+  },
+  "selection_rule": "maximum ndcg_at_10 over the full declared population; ties resolved by declared model order",
+  "stage": "validation",
+  "strongest_simple_baseline": "popularity",
+  "strongest_simple_baseline_params": {},
+  "test_accessed": false,
+  "test_metrics": null,
+  "validation_artifact_sha256": "c4919c67c23174fa645b01842a3b7f62888592ba755efdc8e385ec3635a70016",
+  "validation_primary_metrics": {
+    "als": {
+      "ci_high": 0.0769385582381021,
+      "ci_low": 0.05503051981136461,
+      "estimate": 0.06612855146289316
+    },
+    "bpr": {
+      "ci_high": 0.07381584253372507,
+      "ci_low": 0.053187997122091574,
+      "estimate": 0.06329837504930669
+    },
+    "item_knn": {
+      "ci_high": 0.06972258473227967,
+      "ci_low": 0.0486731130814013,
+      "estimate": 0.05941944847794838
+    },
+    "popularity": {
+      "ci_high": 0.07153102894245672,
+      "ci_low": 0.04991270387435977,
+      "estimate": 0.06075372841909675
+    },
+    "retrieval_reranker": {
+      "ci_high": 0.07682801131815997,
+      "ci_low": 0.054927020729353314,
+      "estimate": 0.06601486800432368
+    },
+    "two_tower": {
+      "ci_high": 0.07114742348942006,
+      "ci_low": 0.04998642611948654,
+      "estimate": 0.060682370982609174
+    }
+  },
+  "validation_split_artifact_sha256": "a64c1d4c39d55606ce8983dfe045d91a510a695463b99f1c1014533adb9797bd",
+  "validation_split_manifest_sha256": "175d64b04195c90dd809b53dd712f6e9b6f95fa82fc384ab226fc52c3bfee50d"
+}

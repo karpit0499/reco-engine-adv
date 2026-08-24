@@ -1,0 +1,982 @@
+{
+  "archive_sha256": "a6898adb50b9ca05aa231689da44c217cb524e7ebd39d264c56e2832f2c54e20",
+  "benchmark_code_sha256": "55dab1aff18743331f6f38b36219540bcdc28c2c8cd293845c08a79fd262735b",
+  "config_sha256": "5018d44f164d71d4abfa0d919a47fb4052e75a1ab2c34dcec2a3bfac2ea1b4e5",
+  "dataset": {
+    "catalog_items": 3883,
+    "cold_catalog_items": 430,
+    "cold_targets": 0,
+    "cold_users": 549,
+    "evaluation_users": 905,
+    "fit_positive_interactions": 436093,
+    "seen_rating_events": 750151,
+    "stage": "validation",
+    "target_timestamp_max": 977082955,
+    "target_timestamp_min": 975220939,
+    "training_users": 6040,
+    "warm_catalog_items": 3453,
+    "warm_targets": 905,
+    "warm_users": 356
+  },
+  "environment": {
+    "machine": "arm64",
+    "packages": {
+      "numpy": "1.26.4",
+      "scikit-learn": "1.5.1",
+      "scipy": "1.17.1",
+      "torch": "2.13.0"
+    },
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "python": "3.12.10"
+  },
+  "generated_at": "2026-08-20T20:39:34.709677+00:00",
+  "models": {
+    "als": {
+      "descriptive_metrics": {
+        "catalog_coverage_at_10": 0.205768735513778,
+        "catalog_coverage_at_20": 0.2611382951326294
+      },
+      "diagnostic_fit_seconds": 1.3880076670029666,
+      "diagnostic_full_catalog_scoring_seconds": 0.023504541997681372,
+      "metrics": {
+        "mrr_at_10": {
+          "ci_high": 0.04877334911865296,
+          "ci_low": 0.032851157590107864,
+          "estimate": 0.04059326493028151
+        },
+        "mrr_at_20": {
+          "ci_high": 0.05511176819802466,
+          "ci_low": 0.03942877469326463,
+          "estimate": 0.0470898256166289
+        },
+        "ndcg_at_10": {
+          "ci_high": 0.0769385582381021,
+          "ci_low": 0.05503051981136461,
+          "estimate": 0.06612855146289316
+        },
+        "ndcg_at_20": {
+          "ci_high": 0.10137537434226357,
+          "ci_low": 0.07875917912805887,
+          "estimate": 0.0900527155935715
+        },
+        "recall_at_10": {
+          "ci_high": 0.17240331491712693,
+          "ci_low": 0.1270718232044199,
+          "estimate": 0.15027624309392265
+        },
+        "recall_at_20": {
+          "ci_high": 0.2729281767955801,
+          "ci_low": 0.2176519337016575,
+          "estimate": 0.24530386740331492
+        },
+        "user_coverage_at_10": {
+          "ci_high": 1.0,
+          "ci_low": 1.0,
+          "estimate": 1.0
+        },
+        "user_coverage_at_20": {
+          "ci_high": 1.0,
+          "ci_low": 1.0,
+          "estimate": 1.0
+        }
+      },
+      "params": {
+        "alpha": 20.0,
+        "factors": 24,
+        "iterations": 4,
+        "regularization": 0.05
+      },
+      "retrieval_diagnostics": null,
+      "target_segments": {
+        "cold_item": {
+          "catalog_coverage_at_10": null,
+          "catalog_coverage_at_20": null,
+          "mrr_at_10": null,
+          "mrr_at_20": null,
+          "ndcg_at_10": null,
+          "ndcg_at_20": null,
+          "recall_at_10": null,
+          "recall_at_20": null,
+          "user_coverage_at_10": null,
+          "user_coverage_at_20": null,
+          "users": 0
+        },
+        "warm_item": {
+          "catalog_coverage_at_10": 0.205768735513778,
+          "catalog_coverage_at_20": 0.2611382951326294,
+          "mrr_at_10": 0.04059326493028151,
+          "mrr_at_20": 0.0470898256166289,
+          "ndcg_at_10": 0.06612855146289316,
+          "ndcg_at_20": 0.0900527155935715,
+          "recall_at_10": 0.15027624309392265,
+          "recall_at_20": 0.24530386740331492,
+          "user_coverage_at_10": 1.0,
+          "user_coverage_at_20": 1.0,
+          "users": 905
+        }
+      },
+      "user_cohorts": {
+        "cold": {
+          "catalog_coverage_at_10": 0.0025753283543651817,
+          "catalog_coverage_at_20": 0.0051506567087303634,
+          "mrr_at_10": 0.04487813340272356,
+          "mrr_at_20": 0.05316718265127136,
+          "ndcg_at_10": 0.0759193345831235,
+          "ndcg_at_20": 0.10658423576150175,
+          "recall_at_10": 0.1785063752276867,
+          "recall_at_20": 0.3005464480874317,
+          "user_coverage_at_10": 1.0,
+          "user_coverage_at_20": 1.0,
+          "users": 549
+        },
+        "warm": {
+          "catalog_coverage_at_10": 0.205768735513778,
+          "catalog_coverage_at_20": 0.2611382951326294,
+          "mrr_at_10": 0.033985420010700915,
+          "mrr_at_20": 0.037717721650284176,
+          "ndcg_at_10": 0.051029843785908746,
+          "ndcg_at_20": 0.06455888252561165,
+          "recall_at_10": 0.10674157303370786,
+          "recall_at_20": 0.1601123595505618,
+          "user_coverage_at_10": 1.0,
+          "user_coverage_at_20": 1.0,
+          "users": 356
+        }
+      }
+    },
+    "bpr": {
+      "descriptive_metrics": {
+        "catalog_coverage_at_10": 0.18490857584342005,
+        "catalog_coverage_at_20": 0.27015194437290757
+      },
+      "diagnostic_fit_seconds": 3.7523410829890054,
+      "diagnostic_full_catalog_scoring_seconds": 0.05793762499524746,
+      "metrics": {
+        "mrr_at_10": {
+          "ci_high": 0.04642759580812066,
+          "ci_low": 0.031775903271069016,
+          "estimate": 0.0388182934315531
+        },
+        "mrr_at_20": {
+          "ci_high": 0.05330389819650442,
+          "ci_low": 0.038465122548998254,
+          "estimate": 0.0455647771152877
+        },
+        "ndcg_at_10": {
+          "ci_high": 0.07381584253372507,
+          "ci_low": 0.053187997122091574,
+          "estimate": 0.06329837504930669
+        },
+        "ndcg_at_20": {
+          "ci_high": 0.09936099825929887,
+          "ci_low": 0.07736411481843154,
+          "estimate": 0.08826629522100517
+        },
+        "recall_at_10": {
+          "ci_high": 0.16574585635359115,
+          "ci_low": 0.12044198895027625,
+          "estimate": 0.143646408839779
+        },
+        "recall_at_20": {
+          "ci_high": 0.27071823204419887,
+          "ci_low": 0.2154696132596685,
+          "estimate": 0.2430939226519337
+        },
+        "user_coverage_at_10": {
+          "ci_high": 1.0,
+          "ci_low": 1.0,
+          "estimate": 1.0
+        },
+        "user_coverage_at_20": {
+          "ci_high": 1.0,
+          "ci_low": 1.0,
+          "estimate": 1.0
+        }
+      },
+      "params": {
+        "batch_size": 8192,
+        "epochs": 5,
+        "factors": 32,
+        "learning_rate": 0.03,
+        "regularization": 0.0001
+      },
+      "retrieval_diagnostics": null,
+      "target_segments": {
+        "cold_item": {
+          "catalog_coverage_at_10": null,
+          "catalog_coverage_at_20": null,
+          "mrr_at_10": null,
+          "mrr_at_20": null,
+          "ndcg_at_10": null,
+          "ndcg_at_20": null,
+          "recall_at_10": null,
+          "recall_at_20": null,
+          "user_coverage_at_10": null,
+          "user_coverage_at_20": null,
+          "users": 0
+        },
+        "warm_item": {
+          "catalog_coverage_at_10": 0.18490857584342005,
+          "catalog_coverage_at_20": 0.27015194437290757,
+          "mrr_at_10": 0.0388182934315531,
+          "mrr_at_20": 0.0455647771152877,
+          "ndcg_at_10": 0.06329837504930669,
+          "ndcg_at_20": 0.08826629522100517,
+          "recall_at_10": 0.143646408839779,
+          "recall_at_20": 0.2430939226519337,
+          "user_coverage_at_10": 1.0,
+          "user_coverage_at_20": 1.0,
+          "users": 905
+        }
+      },
+      "user_cohorts": {
+        "cold": {
+          "catalog_coverage_at_10": 0.0025753283543651817,
+          "catalog_coverage_at_20": 0.0051506567087303634,
+          "mrr_at_10": 0.04487813340272356,
+          "mrr_at_20": 0.05316718265127136,
+          "ndcg_at_10": 0.0759193345831235,
+          "ndcg_at_20": 0.10658423576150175,
+          "recall_at_10": 0.1785063752276867,
+          "recall_at_20": 0.3005464480874317,
+          "user_coverage_at_10": 1.0,
+          "user_coverage_at_20": 1.0,
+          "users": 549
+        },
+        "warm": {
+          "catalog_coverage_at_10": 0.18490857584342005,
+          "catalog_coverage_at_20": 0.27015194437290757,
+          "mrr_at_10": 0.029473203138933476,
+          "mrr_at_20": 0.03384084273535781,
+          "ndcg_at_10": 0.043835153745752115,
+          "ndcg_at_20": 0.060017561072879824,
+          "recall_at_10": 0.0898876404494382,
+          "recall_at_20": 0.1544943820224719,
+          "user_coverage_at_10": 1.0,
+          "user_coverage_at_20": 1.0,
+          "users": 356
+        }
+      }
+    },
+    "item_knn": {
+      "descriptive_metrics": {
+        "catalog_coverage_at_10": 0.04635591037857327,
+        "catalog_coverage_at_20": 0.07107906258047901
+      },
+      "diagnostic_fit_seconds": 0.72054312498949,
+      "diagnostic_full_catalog_scoring_seconds": 0.028408458005287685,
+      "metrics": {
+        "mrr_at_10": {
+          "ci_high": 0.044754110760326225,
+          "ci_low": 0.029153720512145927,
+          "estimate": 0.03672235376655266
+        },
+        "mrr_at_20": {
+          "ci_high": 0.05013900455834563,
+          "ci_low": 0.034867620663830444,
+          "estimate": 0.042380034294236445
+        },
+        "ndcg_at_10": {
+          "ci_high": 0.06972258473227967,
+          "ci_low": 0.0486731130814013,
+          "estimate": 0.05941944847794838
+        },
+        "ndcg_at_20": {
+          "ci_high": 0.09087603130937484,
+          "ci_low": 0.06902898657026363,
+          "estimate": 0.08027719449665559
+        },
+        "recall_at_10": {
+          "ci_high": 0.1558011049723757,
+          "ci_low": 0.11160220994475138,
+          "estimate": 0.13480662983425415
+        },
+        "recall_at_20": {
+          "ci_high": 0.24419889502762432,
+          "ci_low": 0.19116022099447513,
+          "estimate": 0.2176795580110497
+        },
+        "user_coverage_at_10": {
+          "ci_high": 1.0,
+          "ci_low": 1.0,
+          "estimate": 1.0
+        },
+        "user_coverage_at_20": {
+          "ci_high": 1.0,
+          "ci_low": 1.0,
+          "estimate": 1.0
+        }
+      },
+      "params": {
+        "neighbors": 100
+      },
+      "retrieval_diagnostics": null,
+      "target_segments": {
+        "cold_item": {
+          "catalog_coverage_at_10": null,
+          "catalog_coverage_at_20": null,
+          "mrr_at_10": null,
+          "mrr_at_20": null,
+          "ndcg_at_10": null,
+          "ndcg_at_20": null,
+          "recall_at_10": null,
+          "recall_at_20": null,
+          "user_coverage_at_10": null,
+          "user_coverage_at_20": null,
+          "users": 0
+        },
+        "warm_item": {
+          "catalog_coverage_at_10": 0.04635591037857327,
+          "catalog_coverage_at_20": 0.07107906258047901,
+          "mrr_at_10": 0.03672235376655266,
+          "mrr_at_20": 0.042380034294236445,
+          "ndcg_at_10": 0.05941944847794838,
+          "ndcg_at_20": 0.08027719449665559,
+          "recall_at_10": 0.13480662983425415,
+          "recall_at_20": 0.2176795580110497,
+          "user_coverage_at_10": 1.0,
+          "user_coverage_at_20": 1.0,
+          "users": 905
+        }
+      },
+      "user_cohorts": {
+        "cold": {
+          "catalog_coverage_at_10": 0.0025753283543651817,
+          "catalog_coverage_at_20": 0.0051506567087303634,
+          "mrr_at_10": 0.04487813340272356,
+          "mrr_at_20": 0.05316718265127136,
+          "ndcg_at_10": 0.0759193345831235,
+          "ndcg_at_20": 0.10658423576150175,
+          "recall_at_10": 0.1785063752276867,
+          "recall_at_20": 0.3005464480874317,
+          "user_coverage_at_10": 1.0,
+          "user_coverage_at_20": 1.0,
+          "users": 549
+        },
+        "warm": {
+          "catalog_coverage_at_10": 0.04635591037857327,
+          "catalog_coverage_at_20": 0.07107906258047901,
+          "mrr_at_10": 0.024145041911895843,
+          "mrr_at_20": 0.025744797080719084,
+          "ndcg_at_10": 0.03397439940002385,
+          "ndcg_at_20": 0.03970818984946306,
+          "recall_at_10": 0.06741573033707865,
+          "recall_at_20": 0.0898876404494382,
+          "user_coverage_at_10": 1.0,
+          "user_coverage_at_20": 1.0,
+          "users": 356
+        }
+      }
+    },
+    "popularity": {
+      "descriptive_metrics": {
+        "catalog_coverage_at_10": 0.02652588204996137,
+        "catalog_coverage_at_20": 0.040175122328096835
+      },
+      "diagnostic_fit_seconds": 0.00024895799288060516,
+      "diagnostic_full_catalog_scoring_seconds": 0.016685249996953644,
+      "metrics": {
+        "mrr_at_10": {
+          "ci_high": 0.04594821538191703,
+          "ci_low": 0.02974061650442866,
+          "estimate": 0.03774445321406647
+        },
+        "mrr_at_20": {
+          "ci_high": 0.05224070068959144,
+          "ci_low": 0.036180398384468695,
+          "estimate": 0.0440897972623594
+        },
+        "ndcg_at_10": {
+          "ci_high": 0.07153102894245672,
+          "ci_low": 0.04991270387435977,
+          "estimate": 0.06075372841909675
+        },
+        "ndcg_at_20": {
+          "ci_high": 0.09515099820332183,
+          "ci_low": 0.07304970703212828,
+          "estimate": 0.08412029849908732
+        },
+        "recall_at_10": {
+          "ci_high": 0.1591160220994475,
+          "ci_low": 0.11491712707182321,
+          "estimate": 0.13701657458563535
+        },
+        "recall_at_20": {
+          "ci_high": 0.2574585635359116,
+          "ci_low": 0.20331491712707184,
+          "estimate": 0.22983425414364642
+        },
+        "user_coverage_at_10": {
+          "ci_high": 1.0,
+          "ci_low": 1.0,
+          "estimate": 1.0
+        },
+        "user_coverage_at_20": {
+          "ci_high": 1.0,
+          "ci_low": 1.0,
+          "estimate": 1.0
+        }
+      },
+      "params": {},
+      "retrieval_diagnostics": null,
+      "target_segments": {
+        "cold_item": {
+          "catalog_coverage_at_10": null,
+          "catalog_coverage_at_20": null,
+          "mrr_at_10": null,
+          "mrr_at_20": null,
+          "ndcg_at_10": null,
+          "ndcg_at_20": null,
+          "recall_at_10": null,
+          "recall_at_20": null,
+          "user_coverage_at_10": null,
+          "user_coverage_at_20": null,
+          "users": 0
+        },
+        "warm_item": {
+          "catalog_coverage_at_10": 0.02652588204996137,
+          "catalog_coverage_at_20": 0.040175122328096835,
+          "mrr_at_10": 0.03774445321406647,
+          "mrr_at_20": 0.0440897972623594,
+          "ndcg_at_10": 0.06075372841909675,
+          "ndcg_at_20": 0.08412029849908732,
+          "recall_at_10": 0.13701657458563535,
+          "recall_at_20": 0.22983425414364642,
+          "user_coverage_at_10": 1.0,
+          "user_coverage_at_20": 1.0,
+          "users": 905
+        }
+      },
+      "user_cohorts": {
+        "cold": {
+          "catalog_coverage_at_10": 0.0025753283543651817,
+          "catalog_coverage_at_20": 0.0051506567087303634,
+          "mrr_at_10": 0.04487813340272356,
+          "mrr_at_20": 0.05316718265127136,
+          "ndcg_at_10": 0.0759193345831235,
+          "ndcg_at_20": 0.10658423576150175,
+          "recall_at_10": 0.1785063752276867,
+          "recall_at_20": 0.3005464480874317,
+          "user_coverage_at_10": 1.0,
+          "user_coverage_at_20": 1.0,
+          "users": 549
+        },
+        "warm": {
+          "catalog_coverage_at_10": 0.02652588204996137,
+          "catalog_coverage_at_20": 0.040175122328096835,
+          "mrr_at_10": 0.026743356518637417,
+          "mrr_at_20": 0.030091245075526046,
+          "ndcg_at_10": 0.037366318913336416,
+          "ndcg_at_20": 0.04947787839497069,
+          "recall_at_10": 0.07303370786516854,
+          "recall_at_20": 0.12078651685393259,
+          "user_coverage_at_10": 1.0,
+          "user_coverage_at_20": 1.0,
+          "users": 356
+        }
+      }
+    },
+    "retrieval_reranker": {
+      "descriptive_metrics": {
+        "catalog_coverage_at_10": 0.21400978624774658,
+        "catalog_coverage_at_20": 0.27349987123358227
+      },
+      "diagnostic_fit_seconds": 0.9708858340018196,
+      "diagnostic_full_catalog_scoring_seconds": 0.09819500001322012,
+      "metrics": {
+        "mrr_at_10": {
+          "ci_high": 0.04782774269928965,
+          "ci_low": 0.032377762430939226,
+          "estimate": 0.03982460755941419
+        },
+        "mrr_at_20": {
+          "ci_high": 0.05388369316788572,
+          "ci_low": 0.03864227980030924,
+          "estimate": 0.04603673553068897
+        },
+        "ndcg_at_10": {
+          "ci_high": 0.07682801131815997,
+          "ci_low": 0.054927020729353314,
+          "estimate": 0.06601486800432368
+        },
+        "ndcg_at_20": {
+          "ci_high": 0.10005280545255048,
+          "ci_low": 0.07802739162655672,
+          "estimate": 0.0890310891327135
+        },
+        "recall_at_10": {
+          "ci_high": 0.17569060773480663,
+          "ci_low": 0.1292541436464089,
+          "estimate": 0.15248618784530388
+        },
+        "recall_at_20": {
+          "ci_high": 0.2718232044198895,
+          "ci_low": 0.2165745856353591,
+          "estimate": 0.24419889502762432
+        },
+        "user_coverage_at_10": {
+          "ci_high": 1.0,
+          "ci_low": 1.0,
+          "estimate": 1.0
+        },
+        "user_coverage_at_20": {
+          "ci_high": 1.0,
+          "ci_low": 1.0,
+          "estimate": 1.0
+        }
+      },
+      "params": {
+        "logistic_c": 1.0,
+        "negative_ratio": 2,
+        "positive_samples_per_user": 20,
+        "retrieval_k": 200
+      },
+      "retrieval_diagnostics": {
+        "retrieval_k": 200,
+        "retrieval_target_recall": 0.6320441988950276
+      },
+      "target_segments": {
+        "cold_item": {
+          "catalog_coverage_at_10": null,
+          "catalog_coverage_at_20": null,
+          "mrr_at_10": null,
+          "mrr_at_20": null,
+          "ndcg_at_10": null,
+          "ndcg_at_20": null,
+          "recall_at_10": null,
+          "recall_at_20": null,
+          "user_coverage_at_10": null,
+          "user_coverage_at_20": null,
+          "users": 0
+        },
+        "warm_item": {
+          "catalog_coverage_at_10": 0.21400978624774658,
+          "catalog_coverage_at_20": 0.27349987123358227,
+          "mrr_at_10": 0.03982460755941419,
+          "mrr_at_20": 0.04603673553068897,
+          "ndcg_at_10": 0.06601486800432368,
+          "ndcg_at_20": 0.0890310891327135,
+          "recall_at_10": 0.15248618784530388,
+          "recall_at_20": 0.24419889502762432,
+          "user_coverage_at_10": 1.0,
+          "user_coverage_at_20": 1.0,
+          "users": 905
+        }
+      },
+      "user_cohorts": {
+        "cold": {
+          "catalog_coverage_at_10": 0.0025753283543651817,
+          "catalog_coverage_at_20": 0.0051506567087303634,
+          "mrr_at_10": 0.04487813340272356,
+          "mrr_at_20": 0.05316718265127136,
+          "ndcg_at_10": 0.0759193345831235,
+          "ndcg_at_20": 0.10658423576150175,
+          "recall_at_10": 0.1785063752276867,
+          "recall_at_20": 0.3005464480874317,
+          "user_coverage_at_10": 1.0,
+          "user_coverage_at_20": 1.0,
+          "users": 549
+        },
+        "warm": {
+          "catalog_coverage_at_10": 0.21400978624774658,
+          "catalog_coverage_at_20": 0.27349987123358227,
+          "mrr_at_10": 0.032031389334760116,
+          "mrr_at_20": 0.03504062466215038,
+          "ndcg_at_10": 0.05074084510611836,
+          "ndcg_at_20": 0.061961770314722636,
+          "recall_at_10": 0.11235955056179775,
+          "recall_at_20": 0.15730337078651685,
+          "user_coverage_at_10": 1.0,
+          "user_coverage_at_20": 1.0,
+          "users": 356
+        }
+      }
+    },
+    "two_tower": {
+      "descriptive_metrics": {
+        "catalog_coverage_at_10": 0.13984032964202936,
+        "catalog_coverage_at_20": 0.19984548029873808
+      },
+      "diagnostic_fit_seconds": 7.725741625006776,
+      "diagnostic_full_catalog_scoring_seconds": 0.06981916700897273,
+      "metrics": {
+        "mrr_at_10": {
+          "ci_high": 0.04559721126019468,
+          "ci_low": 0.02999204156800842,
+          "estimate": 0.03755897570814699
+        },
+        "mrr_at_20": {
+          "ci_high": 0.052400315005534326,
+          "ci_low": 0.036816918253398376,
+          "estimate": 0.04445691939743733
+        },
+        "ndcg_at_10": {
+          "ci_high": 0.07114742348942006,
+          "ci_low": 0.04998642611948654,
+          "estimate": 0.060682370982609174
+        },
+        "ndcg_at_20": {
+          "ci_high": 0.0969560467501131,
+          "ci_low": 0.07474768434551927,
+          "estimate": 0.08602757297995729
+        },
+        "recall_at_10": {
+          "ci_high": 0.1580110497237569,
+          "ci_low": 0.11491712707182321,
+          "estimate": 0.13701657458563535
+        },
+        "recall_at_20": {
+          "ci_high": 0.2640883977900553,
+          "ci_low": 0.20994475138121546,
+          "estimate": 0.23756906077348067
+        },
+        "user_coverage_at_10": {
+          "ci_high": 1.0,
+          "ci_low": 1.0,
+          "estimate": 1.0
+        },
+        "user_coverage_at_20": {
+          "ci_high": 1.0,
+          "ci_low": 1.0,
+          "estimate": 1.0
+        }
+      },
+      "params": {
+        "batch_size": 8192,
+        "epochs": 5,
+        "factors": 32,
+        "learning_rate": 0.01,
+        "negatives": 3,
+        "regularization": 0.0001
+      },
+      "retrieval_diagnostics": null,
+      "target_segments": {
+        "cold_item": {
+          "catalog_coverage_at_10": null,
+          "catalog_coverage_at_20": null,
+          "mrr_at_10": null,
+          "mrr_at_20": null,
+          "ndcg_at_10": null,
+          "ndcg_at_20": null,
+          "recall_at_10": null,
+          "recall_at_20": null,
+          "user_coverage_at_10": null,
+          "user_coverage_at_20": null,
+          "users": 0
+        },
+        "warm_item": {
+          "catalog_coverage_at_10": 0.13984032964202936,
+          "catalog_coverage_at_20": 0.19984548029873808,
+          "mrr_at_10": 0.03755897570814699,
+          "mrr_at_20": 0.04445691939743733,
+          "ndcg_at_10": 0.060682370982609174,
+          "ndcg_at_20": 0.08602757297995729,
+          "recall_at_10": 0.13701657458563535,
+          "recall_at_20": 0.23756906077348067,
+          "user_coverage_at_10": 1.0,
+          "user_coverage_at_20": 1.0,
+          "users": 905
+        }
+      },
+      "user_cohorts": {
+        "cold": {
+          "catalog_coverage_at_10": 0.0025753283543651817,
+          "catalog_coverage_at_20": 0.0051506567087303634,
+          "mrr_at_10": 0.04487813340272356,
+          "mrr_at_20": 0.05316718265127136,
+          "ndcg_at_10": 0.0759193345831235,
+          "ndcg_at_20": 0.10658423576150175,
+          "recall_at_10": 0.1785063752276867,
+          "recall_at_20": 0.3005464480874317,
+          "user_coverage_at_10": 1.0,
+          "user_coverage_at_20": 1.0,
+          "users": 549
+        },
+        "warm": {
+          "catalog_coverage_at_10": 0.13984032964202936,
+          "catalog_coverage_at_20": 0.19984548029873808,
+          "mrr_at_10": 0.026271847690387016,
+          "mrr_at_20": 0.031024519042507876,
+          "ndcg_at_10": 0.03718491868855759,
+          "ndcg_at_20": 0.05432642728594632,
+          "recall_at_10": 0.07303370786516854,
+          "recall_at_20": 0.1404494382022472,
+          "user_coverage_at_10": 1.0,
+          "user_coverage_at_20": 1.0,
+          "users": 356
+        }
+      }
+    }
+  },
+  "protocol_sha256": "d8d59f14ed7e2427791c705866aae1b807d5f7eed7840b4ee2e4a574c3ee0932",
+  "schema_version": 2,
+  "selection": {
+    "paired_differences_vs_strongest_simple": {
+      "als": {
+        "mrr_at_10": {
+          "ci_high": 0.009630952380952374,
+          "ci_low": -0.004611231693414021,
+          "estimate": 0.0028488117162150384
+        },
+        "mrr_at_20": {
+          "ci_high": 0.009879381974092511,
+          "ci_low": -0.0044899068766065895,
+          "estimate": 0.0030000283542695044
+        },
+        "ndcg_at_10": {
+          "ci_high": 0.01375642748825502,
+          "ci_low": -0.003245584102530883,
+          "estimate": 0.005374823043796412
+        },
+        "ndcg_at_20": {
+          "ci_high": 0.01403161977163463,
+          "ci_low": -0.0024831323110536593,
+          "estimate": 0.00593241709448418
+        },
+        "recall_at_10": {
+          "ci_high": 0.028729281767955805,
+          "ci_low": -0.0022099447513812265,
+          "estimate": 0.013259668508287303
+        },
+        "recall_at_20": {
+          "ci_high": 0.03204419889502763,
+          "ci_low": -0.0022099447513811996,
+          "estimate": 0.015469613259668502
+        },
+        "user_coverage_at_10": {
+          "ci_high": 0.0,
+          "ci_low": 0.0,
+          "estimate": 0.0
+        },
+        "user_coverage_at_20": {
+          "ci_high": 0.0,
+          "ci_low": 0.0,
+          "estimate": 0.0
+        }
+      },
+      "bpr": {
+        "mrr_at_10": {
+          "ci_high": 0.007265642813294734,
+          "ci_low": -0.0059667960185916,
+          "estimate": 0.0010738402174866324
+        },
+        "mrr_at_20": {
+          "ci_high": 0.007471011182446164,
+          "ci_low": -0.005406971909344134,
+          "estimate": 0.0014749798529282987
+        },
+        "ndcg_at_10": {
+          "ci_high": 0.009855770533299436,
+          "ci_low": -0.0054654625249321446,
+          "estimate": 0.0025446466302099374
+        },
+        "ndcg_at_20": {
+          "ci_high": 0.011442443858401168,
+          "ci_low": -0.003812525267227935,
+          "estimate": 0.004145996721917844
+        },
+        "recall_at_10": {
+          "ci_high": 0.018784530386740328,
+          "ci_low": -0.007734806629834251,
+          "estimate": 0.006629834254143652
+        },
+        "recall_at_20": {
+          "ci_high": 0.028729281767955805,
+          "ci_low": -0.0022099447513811987,
+          "estimate": 0.013259668508287276
+        },
+        "user_coverage_at_10": {
+          "ci_high": 0.0,
+          "ci_low": 0.0,
+          "estimate": 0.0
+        },
+        "user_coverage_at_20": {
+          "ci_high": 0.0,
+          "ci_low": 0.0,
+          "estimate": 0.0
+        }
+      },
+      "item_knn": {
+        "mrr_at_10": {
+          "ci_high": 0.005383462685258254,
+          "ci_low": -0.007318534596158908,
+          "estimate": -0.0010220994475138093
+        },
+        "mrr_at_20": {
+          "ci_high": 0.004683970541120573,
+          "ci_low": -0.007932691967717316,
+          "estimate": -0.0017097629681229534
+        },
+        "ndcg_at_10": {
+          "ci_high": 0.005044049776505912,
+          "ci_low": -0.007986101964946106,
+          "estimate": -0.0013342799411483683
+        },
+        "ndcg_at_20": {
+          "ci_high": 0.002356883103266061,
+          "ci_low": -0.010456267760943092,
+          "estimate": -0.0038431040024317353
+        },
+        "recall_at_10": {
+          "ci_high": 0.007734806629834251,
+          "ci_low": -0.01215469613259669,
+          "estimate": -0.0022099447513811987
+        },
+        "recall_at_20": {
+          "ci_high": 0.0,
+          "ci_low": -0.025414364640883952,
+          "estimate": -0.012154696132596704
+        },
+        "user_coverage_at_10": {
+          "ci_high": 0.0,
+          "ci_low": 0.0,
+          "estimate": 0.0
+        },
+        "user_coverage_at_20": {
+          "ci_high": 0.0,
+          "ci_low": 0.0,
+          "estimate": 0.0
+        }
+      },
+      "popularity": {
+        "mrr_at_10": {
+          "ci_high": 0.0,
+          "ci_low": 0.0,
+          "estimate": 0.0
+        },
+        "mrr_at_20": {
+          "ci_high": 0.0,
+          "ci_low": 0.0,
+          "estimate": 0.0
+        },
+        "ndcg_at_10": {
+          "ci_high": 0.0,
+          "ci_low": 0.0,
+          "estimate": 0.0
+        },
+        "ndcg_at_20": {
+          "ci_high": 0.0,
+          "ci_low": 0.0,
+          "estimate": 0.0
+        },
+        "recall_at_10": {
+          "ci_high": 0.0,
+          "ci_low": 0.0,
+          "estimate": 0.0
+        },
+        "recall_at_20": {
+          "ci_high": 0.0,
+          "ci_low": 0.0,
+          "estimate": 0.0
+        },
+        "user_coverage_at_10": {
+          "ci_high": 0.0,
+          "ci_low": 0.0,
+          "estimate": 0.0
+        },
+        "user_coverage_at_20": {
+          "ci_high": 0.0,
+          "ci_low": 0.0,
+          "estimate": 0.0
+        }
+      },
+      "retrieval_reranker": {
+        "mrr_at_10": {
+          "ci_high": 0.008704617205998409,
+          "ci_low": -0.005078279838638961,
+          "estimate": 0.0020801543453477164
+        },
+        "mrr_at_20": {
+          "ci_high": 0.00850863253462333,
+          "ci_low": -0.005311199305083254,
+          "estimate": 0.0019469382683295691
+        },
+        "ndcg_at_10": {
+          "ci_high": 0.013422200516178373,
+          "ci_low": -0.003183049108378327,
+          "estimate": 0.005261139585226934
+        },
+        "ndcg_at_20": {
+          "ci_high": 0.012959011632761086,
+          "ci_low": -0.003570498803003438,
+          "estimate": 0.0049107906336261775
+        },
+        "recall_at_10": {
+          "ci_high": 0.030939226519337004,
+          "ci_low": -0.0011049723756905994,
+          "estimate": 0.01546961325966853
+        },
+        "recall_at_20": {
+          "ci_high": 0.032044198895027604,
+          "ci_low": -0.003314917127071826,
+          "estimate": 0.014364640883977903
+        },
+        "user_coverage_at_10": {
+          "ci_high": 0.0,
+          "ci_low": 0.0,
+          "estimate": 0.0
+        },
+        "user_coverage_at_20": {
+          "ci_high": 0.0,
+          "ci_low": 0.0,
+          "estimate": 0.0
+        }
+      },
+      "two_tower": {
+        "mrr_at_10": {
+          "ci_high": 0.005269271244409361,
+          "ci_low": -0.006020915548539852,
+          "estimate": -0.00018547750591948325
+        },
+        "mrr_at_20": {
+          "ci_high": 0.005833244542547857,
+          "ci_low": -0.00531799430542546,
+          "estimate": 0.00036712213507793245
+        },
+        "ndcg_at_10": {
+          "ci_high": 0.006177312418626279,
+          "ci_low": -0.006539736566846167,
+          "estimate": -7.135743648757631e-05
+        },
+        "ndcg_at_20": {
+          "ci_high": 0.008330532111035703,
+          "ci_low": -0.005139120179519507,
+          "estimate": 0.0019072744808699693
+        },
+        "recall_at_10": {
+          "ci_high": 0.011049723756906077,
+          "ci_low": -0.011049723756906077,
+          "estimate": 0.0
+        },
+        "recall_at_20": {
+          "ci_high": 0.022099447513812154,
+          "ci_low": -0.007734806629834224,
+          "estimate": 0.007734806629834251
+        },
+        "user_coverage_at_10": {
+          "ci_high": 0.0,
+          "ci_low": 0.0,
+          "estimate": 0.0
+        },
+        "user_coverage_at_20": {
+          "ci_high": 0.0,
+          "ci_low": 0.0,
+          "estimate": 0.0
+        }
+      }
+    },
+    "primary_metric": "ndcg_at_10",
+    "rule": "maximum ndcg_at_10 over the full declared population; ties resolved by declared model order",
+    "selected_model": "als",
+    "strongest_simple_baseline": "popularity"
+  },
+  "split_artifact_sha256": "a64c1d4c39d55606ce8983dfe045d91a510a695463b99f1c1014533adb9797bd",
+  "split_manifest_sha256": "175d64b04195c90dd809b53dd712f6e9b6f95fa82fc384ab226fc52c3bfee50d",
+  "stage": "validation",
+  "test_accessed": false,
+  "uncertainty_notes": {
+    "catalog_coverage": "Catalog coverage is a non-additive set-union statistic and is reported as a full-cohort descriptive estimate without a percentile confidence interval.",
+    "runtime": "Wall-clock fit and full-catalog scoring times are local diagnostics only; they are not endpoint, browser, serving-throughput, or ANN latency claims.",
+    "unit": "evaluation user"
+  }
+}

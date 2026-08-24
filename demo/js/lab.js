@@ -252,7 +252,7 @@ export class Lab {
     }
 
     let hit = 0, tot = 0;
-    for (const row of g.api) {
+    for (const row of (g.api || [])) {
       const uf = C.userFeatures(row.user_id);
       const vec = C.userVector(row.user_id);
       if (!uf || !vec) continue;
@@ -261,8 +261,15 @@ export class Lab {
       hit += mine.filter((i) => cloud.has(i)).length;
       tot += row.items.length;
     }
-    let worst = 0;
-    for (const r of (g.ranker || [])) worst = Math.max(worst, Math.abs(C.score(r.row) - r.prob));
+    let replayWorst = 0, exportedWorst = 0, cloudWorst = 0, rankerRows = 0;
+    for (const r of (g.ranker || [])) {
+      if (!r?.row || !Number.isFinite(r.browser) || !Number.isFinite(r.ml_predict)) continue;
+      const browserNow = C.score(r.row);
+      replayWorst = Math.max(replayWorst, Math.abs(browserNow - r.browser));
+      exportedWorst = Math.max(exportedWorst, Math.abs(r.browser - r.ml_predict));
+      cloudWorst = Math.max(cloudWorst, Math.abs(browserNow - r.ml_predict));
+      rankerRows++;
+    }
 
     const agree = tot ? hit / tot : 0;
     out.innerHTML = `
@@ -271,11 +278,15 @@ export class Lab {
           <span class="vl">${pct(agree)}</span>
           <span class="tr"><i style="width:${(agree * 100).toFixed(1)}%"></i></span></div>
         <div class="bar"><span class="nm">max |browser ranker − BQML ML.PREDICT|</span>
-          <span class="vl">${worst.toExponential(1)}</span>
-          <span class="tr"><i style="width:${Math.min(100, worst * 1e7)}%"></i></span></div>
+          <span class="vl">${rankerRows ? cloudWorst.toExponential(1) : '—'}</span>
+          <span class="tr"><i style="width:${rankerRows ? Math.min(100, cloudWorst * 1e7) : 0}%"></i></span></div>
       </div>
       <p class="prose" style="margin:12px 0 0;font-size:12.5px">
-        The ranker is exact — same trees, same arithmetic. Retrieval is <strong>not</strong>, and
+        ${rankerRows ? `The ${rankerRows} ranker rows replay the exporter's
+        <code>browser</code> values to ${replayWorst.toExponential(1)} max error; the exporter's
+        recorded <code>browser</code> ↔ <code>ml_predict</code> residual was
+        ${exportedWorst.toExponential(1)}.` : 'No valid ranker golden rows were exported.'}
+        Retrieval is <strong>not</strong> exact, and
         that gap is the point: the cloud runs <em>approximate</em> nearest-neighbour (tree-AH) because
         a real catalogue is millions of items. The ${tot - hit} item${tot - hit === 1 ? '' : 's'} of
         ${tot} that differ <em>are</em> the approximation. You are looking at ANN recall loss, priced

@@ -3,30 +3,108 @@
     "comp-condition-2": {
       "dag": {
         "tasks": {
-          "refresh": {
+          "promote": {
             "cachingOptions": {},
             "componentRef": {
-              "name": "comp-refresh"
+              "name": "comp-promote"
             },
             "inputs": {
               "parameters": {
-                "index": {
-                  "componentInputParameter": "pipelinechannel--index"
+                "deployed_index_id": {
+                  "componentInputParameter": "pipelinechannel--deployed_index_id"
+                },
+                "evaluated_active_champion_score": {
+                  "componentInputParameter": "pipelinechannel--evaluate-active_champion_score"
+                },
+                "evaluated_active_epoch": {
+                  "componentInputParameter": "pipelinechannel--evaluate-active_epoch"
+                },
+                "evaluated_active_generation": {
+                  "componentInputParameter": "pipelinechannel--evaluate-active_generation"
+                },
+                "evaluated_active_manifest_generation": {
+                  "componentInputParameter": "pipelinechannel--evaluate-active_manifest_generation"
+                },
+                "evaluated_active_manifest_sha256": {
+                  "componentInputParameter": "pipelinechannel--evaluate-active_manifest_sha256"
+                },
+                "evaluated_active_ops_image_uri": {
+                  "componentInputParameter": "pipelinechannel--evaluate-active_ops_image_uri"
+                },
+                "evaluated_active_source_revision": {
+                  "componentInputParameter": "pipelinechannel--evaluate-active_source_revision"
+                },
+                "evaluated_manifest_generation": {
+                  "componentInputParameter": "pipelinechannel--evaluate-manifest_generation"
+                },
+                "evaluated_manifest_sha256": {
+                  "componentInputParameter": "pipelinechannel--evaluate-manifest_sha256"
+                },
+                "generation_id": {
+                  "componentInputParameter": "pipelinechannel--generation_id"
+                },
+                "index_endpoint": {
+                  "componentInputParameter": "pipelinechannel--index_endpoint"
+                },
+                "index_name": {
+                  "componentInputParameter": "pipelinechannel--index_name"
+                },
+                "score": {
+                  "componentInputParameter": "pipelinechannel--evaluate-score"
                 }
               }
             },
             "taskInfo": {
-              "name": "refresh"
+              "name": "promote"
             }
           }
         }
       },
       "inputDefinitions": {
         "parameters": {
+          "pipelinechannel--deployed_index_id": {
+            "parameterType": "STRING"
+          },
+          "pipelinechannel--evaluate-active_champion_score": {
+            "parameterType": "NUMBER_DOUBLE"
+          },
+          "pipelinechannel--evaluate-active_epoch": {
+            "parameterType": "NUMBER_INTEGER"
+          },
+          "pipelinechannel--evaluate-active_generation": {
+            "parameterType": "STRING"
+          },
+          "pipelinechannel--evaluate-active_manifest_generation": {
+            "parameterType": "NUMBER_INTEGER"
+          },
+          "pipelinechannel--evaluate-active_manifest_sha256": {
+            "parameterType": "STRING"
+          },
+          "pipelinechannel--evaluate-active_ops_image_uri": {
+            "parameterType": "STRING"
+          },
+          "pipelinechannel--evaluate-active_source_revision": {
+            "parameterType": "STRING"
+          },
           "pipelinechannel--evaluate-decision": {
             "parameterType": "STRING"
           },
-          "pipelinechannel--index": {
+          "pipelinechannel--evaluate-manifest_generation": {
+            "parameterType": "NUMBER_INTEGER"
+          },
+          "pipelinechannel--evaluate-manifest_sha256": {
+            "parameterType": "STRING"
+          },
+          "pipelinechannel--evaluate-score": {
+            "parameterType": "NUMBER_DOUBLE"
+          },
+          "pipelinechannel--generation_id": {
+            "parameterType": "STRING"
+          },
+          "pipelinechannel--index_endpoint": {
+            "parameterType": "STRING"
+          },
+          "pipelinechannel--index_name": {
             "parameterType": "STRING"
           }
         }
@@ -42,6 +120,9 @@
             },
             "inputs": {
               "parameters": {
+                "generation_id": {
+                  "componentInputParameter": "pipelinechannel--generation_id"
+                },
                 "score": {
                   "componentInputParameter": "pipelinechannel--evaluate-score"
                 }
@@ -60,6 +141,9 @@
           },
           "pipelinechannel--evaluate-score": {
             "parameterType": "NUMBER_DOUBLE"
+          },
+          "pipelinechannel--generation_id": {
+            "parameterType": "STRING"
           }
         }
       }
@@ -73,11 +157,50 @@
             },
             "inputs": {
               "parameters": {
+                "pipelinechannel--deployed_index_id": {
+                  "componentInputParameter": "pipelinechannel--deployed_index_id"
+                },
+                "pipelinechannel--evaluate-active_champion_score": {
+                  "componentInputParameter": "pipelinechannel--evaluate-active_champion_score"
+                },
+                "pipelinechannel--evaluate-active_epoch": {
+                  "componentInputParameter": "pipelinechannel--evaluate-active_epoch"
+                },
+                "pipelinechannel--evaluate-active_generation": {
+                  "componentInputParameter": "pipelinechannel--evaluate-active_generation"
+                },
+                "pipelinechannel--evaluate-active_manifest_generation": {
+                  "componentInputParameter": "pipelinechannel--evaluate-active_manifest_generation"
+                },
+                "pipelinechannel--evaluate-active_manifest_sha256": {
+                  "componentInputParameter": "pipelinechannel--evaluate-active_manifest_sha256"
+                },
+                "pipelinechannel--evaluate-active_ops_image_uri": {
+                  "componentInputParameter": "pipelinechannel--evaluate-active_ops_image_uri"
+                },
+                "pipelinechannel--evaluate-active_source_revision": {
+                  "componentInputParameter": "pipelinechannel--evaluate-active_source_revision"
+                },
                 "pipelinechannel--evaluate-decision": {
                   "componentInputParameter": "pipelinechannel--evaluate-decision"
                 },
-                "pipelinechannel--index": {
-                  "componentInputParameter": "pipelinechannel--index"
+                "pipelinechannel--evaluate-manifest_generation": {
+                  "componentInputParameter": "pipelinechannel--evaluate-manifest_generation"
+                },
+                "pipelinechannel--evaluate-manifest_sha256": {
+                  "componentInputParameter": "pipelinechannel--evaluate-manifest_sha256"
+                },
+                "pipelinechannel--evaluate-score": {
+                  "componentInputParameter": "pipelinechannel--evaluate-score"
+                },
+                "pipelinechannel--generation_id": {
+                  "componentInputParameter": "pipelinechannel--generation_id"
+                },
+                "pipelinechannel--index_endpoint": {
+                  "componentInputParameter": "pipelinechannel--index_endpoint"
+                },
+                "pipelinechannel--index_name": {
+                  "componentInputParameter": "pipelinechannel--index_name"
                 }
               }
             },
@@ -99,6 +222,9 @@
                 },
                 "pipelinechannel--evaluate-score": {
                   "componentInputParameter": "pipelinechannel--evaluate-score"
+                },
+                "pipelinechannel--generation_id": {
+                  "componentInputParameter": "pipelinechannel--generation_id"
                 }
               }
             },
@@ -113,13 +239,49 @@
       },
       "inputDefinitions": {
         "parameters": {
+          "pipelinechannel--deployed_index_id": {
+            "parameterType": "STRING"
+          },
+          "pipelinechannel--evaluate-active_champion_score": {
+            "parameterType": "NUMBER_DOUBLE"
+          },
+          "pipelinechannel--evaluate-active_epoch": {
+            "parameterType": "NUMBER_INTEGER"
+          },
+          "pipelinechannel--evaluate-active_generation": {
+            "parameterType": "STRING"
+          },
+          "pipelinechannel--evaluate-active_manifest_generation": {
+            "parameterType": "NUMBER_INTEGER"
+          },
+          "pipelinechannel--evaluate-active_manifest_sha256": {
+            "parameterType": "STRING"
+          },
+          "pipelinechannel--evaluate-active_ops_image_uri": {
+            "parameterType": "STRING"
+          },
+          "pipelinechannel--evaluate-active_source_revision": {
+            "parameterType": "STRING"
+          },
           "pipelinechannel--evaluate-decision": {
+            "parameterType": "STRING"
+          },
+          "pipelinechannel--evaluate-manifest_generation": {
+            "parameterType": "NUMBER_INTEGER"
+          },
+          "pipelinechannel--evaluate-manifest_sha256": {
             "parameterType": "STRING"
           },
           "pipelinechannel--evaluate-score": {
             "parameterType": "NUMBER_DOUBLE"
           },
-          "pipelinechannel--index": {
+          "pipelinechannel--generation_id": {
+            "parameterType": "STRING"
+          },
+          "pipelinechannel--index_endpoint": {
+            "parameterType": "STRING"
+          },
+          "pipelinechannel--index_name": {
             "parameterType": "STRING"
           }
         }
@@ -127,9 +289,52 @@
     },
     "comp-evaluate": {
       "executorLabel": "exec-evaluate",
+      "inputDefinitions": {
+        "parameters": {
+          "deployed_index_id": {
+            "parameterType": "STRING"
+          },
+          "generation_id": {
+            "parameterType": "STRING"
+          },
+          "index_endpoint": {
+            "parameterType": "STRING"
+          },
+          "index_name": {
+            "parameterType": "STRING"
+          }
+        }
+      },
       "outputDefinitions": {
         "parameters": {
+          "active_champion_score": {
+            "parameterType": "NUMBER_DOUBLE"
+          },
+          "active_epoch": {
+            "parameterType": "NUMBER_INTEGER"
+          },
+          "active_generation": {
+            "parameterType": "STRING"
+          },
+          "active_manifest_generation": {
+            "parameterType": "NUMBER_INTEGER"
+          },
+          "active_manifest_sha256": {
+            "parameterType": "STRING"
+          },
+          "active_ops_image_uri": {
+            "parameterType": "STRING"
+          },
+          "active_source_revision": {
+            "parameterType": "STRING"
+          },
           "decision": {
+            "parameterType": "STRING"
+          },
+          "manifest_generation": {
+            "parameterType": "NUMBER_INTEGER"
+          },
+          "manifest_sha256": {
             "parameterType": "STRING"
           },
           "score": {
@@ -142,24 +347,82 @@
       "executorLabel": "exec-hold",
       "inputDefinitions": {
         "parameters": {
+          "generation_id": {
+            "parameterType": "STRING"
+          },
           "score": {
             "parameterType": "NUMBER_DOUBLE"
           }
         }
       }
     },
-    "comp-refresh": {
-      "executorLabel": "exec-refresh",
+    "comp-promote": {
+      "executorLabel": "exec-promote",
       "inputDefinitions": {
         "parameters": {
-          "index": {
+          "deployed_index_id": {
             "parameterType": "STRING"
+          },
+          "evaluated_active_champion_score": {
+            "parameterType": "NUMBER_DOUBLE"
+          },
+          "evaluated_active_epoch": {
+            "parameterType": "NUMBER_INTEGER"
+          },
+          "evaluated_active_generation": {
+            "parameterType": "STRING"
+          },
+          "evaluated_active_manifest_generation": {
+            "parameterType": "NUMBER_INTEGER"
+          },
+          "evaluated_active_manifest_sha256": {
+            "parameterType": "STRING"
+          },
+          "evaluated_active_ops_image_uri": {
+            "parameterType": "STRING"
+          },
+          "evaluated_active_source_revision": {
+            "parameterType": "STRING"
+          },
+          "evaluated_manifest_generation": {
+            "parameterType": "NUMBER_INTEGER"
+          },
+          "evaluated_manifest_sha256": {
+            "parameterType": "STRING"
+          },
+          "generation_id": {
+            "parameterType": "STRING"
+          },
+          "index_endpoint": {
+            "parameterType": "STRING"
+          },
+          "index_name": {
+            "parameterType": "STRING"
+          },
+          "score": {
+            "parameterType": "NUMBER_DOUBLE"
           }
         }
       }
     },
     "comp-train": {
-      "executorLabel": "exec-train"
+      "executorLabel": "exec-train",
+      "inputDefinitions": {
+        "parameters": {
+          "deployed_index_id": {
+            "parameterType": "STRING"
+          },
+          "generation_id": {
+            "parameterType": "STRING"
+          },
+          "index_endpoint": {
+            "parameterType": "STRING"
+          },
+          "index_name": {
+            "parameterType": "STRING"
+          }
+        }
+      }
     }
   },
   "deploymentSpec": {
@@ -167,10 +430,40 @@
       "exec-evaluate": {
         "container": {
           "args": [
+            "--generation-id",
+            "{{$.inputs.parameters['generation_id']}}",
+            "--index-name",
+            "{{$.inputs.parameters['index_name']}}",
+            "--index-endpoint",
+            "{{$.inputs.parameters['index_endpoint']}}",
+            "--deployed-index-id",
+            "{{$.inputs.parameters['deployed_index_id']}}",
+            "--ops-image-uri",
+            "registry.invalid/reco/ops@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "--source-revision",
+            "0000000000000000000000000000000000000000",
             "--decision-out",
             "{{$.outputs.parameters['decision'].output_file}}",
             "--score-out",
-            "{{$.outputs.parameters['score'].output_file}}"
+            "{{$.outputs.parameters['score'].output_file}}",
+            "--active-generation-out",
+            "{{$.outputs.parameters['active_generation'].output_file}}",
+            "--active-epoch-out",
+            "{{$.outputs.parameters['active_epoch'].output_file}}",
+            "--manifest-generation-out",
+            "{{$.outputs.parameters['manifest_generation'].output_file}}",
+            "--manifest-sha256-out",
+            "{{$.outputs.parameters['manifest_sha256'].output_file}}",
+            "--active-manifest-generation-out",
+            "{{$.outputs.parameters['active_manifest_generation'].output_file}}",
+            "--active-manifest-sha256-out",
+            "{{$.outputs.parameters['active_manifest_sha256'].output_file}}",
+            "--active-ops-image-uri-out",
+            "{{$.outputs.parameters['active_ops_image_uri'].output_file}}",
+            "--active-source-revision-out",
+            "{{$.outputs.parameters['active_source_revision'].output_file}}",
+            "--active-champion-score-out",
+            "{{$.outputs.parameters['active_champion_score'].output_file}}"
           ],
           "command": [
             "python",
@@ -190,13 +483,14 @@
               "value": "0.03"
             }
           ],
-          "image": "europe-west3-docker.pkg.dev/reco-engine-adv/reco-training/reco-ops:v1"
+          "image": "registry.invalid/reco/ops@sha256:0000000000000000000000000000000000000000000000000000000000000000"
         }
       },
       "exec-hold": {
         "container": {
           "args": [
-            "{{$.inputs.parameters['score']}}"
+            "{{$.inputs.parameters['score']}}",
+            "{{$.inputs.parameters['generation_id']}}"
           ],
           "command": [
             "python",
@@ -208,29 +502,78 @@
               "value": "reco-engine-adv"
             }
           ],
-          "image": "europe-west3-docker.pkg.dev/reco-engine-adv/reco-training/reco-ops:v1"
+          "image": "registry.invalid/reco/ops@sha256:0000000000000000000000000000000000000000000000000000000000000000"
         }
       },
-      "exec-refresh": {
+      "exec-promote": {
         "container": {
           "args": [
-            "{{$.inputs.parameters['index']}}"
+            "--generation-id",
+            "{{$.inputs.parameters['generation_id']}}",
+            "--score",
+            "{{$.inputs.parameters['score']}}",
+            "--evaluated-active-generation",
+            "{{$.inputs.parameters['evaluated_active_generation']}}",
+            "--evaluated-active-epoch",
+            "{{$.inputs.parameters['evaluated_active_epoch']}}",
+            "--evaluated-manifest-generation",
+            "{{$.inputs.parameters['evaluated_manifest_generation']}}",
+            "--evaluated-manifest-sha256",
+            "{{$.inputs.parameters['evaluated_manifest_sha256']}}",
+            "--evaluated-ops-image-uri",
+            "registry.invalid/reco/ops@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "--evaluated-source-revision",
+            "0000000000000000000000000000000000000000",
+            "--evaluated-active-manifest-generation",
+            "{{$.inputs.parameters['evaluated_active_manifest_generation']}}",
+            "--evaluated-active-manifest-sha256",
+            "{{$.inputs.parameters['evaluated_active_manifest_sha256']}}",
+            "--evaluated-active-ops-image-uri",
+            "{{$.inputs.parameters['evaluated_active_ops_image_uri']}}",
+            "--evaluated-active-source-revision",
+            "{{$.inputs.parameters['evaluated_active_source_revision']}}",
+            "--evaluated-active-champion-score",
+            "{{$.inputs.parameters['evaluated_active_champion_score']}}",
+            "--index-name",
+            "{{$.inputs.parameters['index_name']}}",
+            "--index-endpoint",
+            "{{$.inputs.parameters['index_endpoint']}}",
+            "--deployed-index-id",
+            "{{$.inputs.parameters['deployed_index_id']}}"
           ],
           "command": [
             "python",
-            "/app/refresh_index.py"
+            "/app/promote.py"
           ],
           "env": [
             {
               "name": "PROJECT",
               "value": "reco-engine-adv"
+            },
+            {
+              "name": "REGION",
+              "value": "europe-west3"
             }
           ],
-          "image": "europe-west3-docker.pkg.dev/reco-engine-adv/reco-training/reco-ops:v1"
+          "image": "registry.invalid/reco/ops@sha256:0000000000000000000000000000000000000000000000000000000000000000"
         }
       },
       "exec-train": {
         "container": {
+          "args": [
+            "--generation-id",
+            "{{$.inputs.parameters['generation_id']}}",
+            "--index-name",
+            "{{$.inputs.parameters['index_name']}}",
+            "--index-endpoint",
+            "{{$.inputs.parameters['index_endpoint']}}",
+            "--deployed-index-id",
+            "{{$.inputs.parameters['deployed_index_id']}}",
+            "--ops-image-uri",
+            "registry.invalid/reco/ops@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+            "--source-revision",
+            "0000000000000000000000000000000000000000"
+          ],
           "command": [
             "python",
             "/app/train.py"
@@ -245,7 +588,7 @@
               "value": "1"
             }
           ],
-          "image": "europe-west3-docker.pkg.dev/reco-engine-adv/reco-training/reco-ops:v1",
+          "image": "registry.invalid/reco/ops@sha256:0000000000000000000000000000000000000000000000000000000000000000",
           "resources": {
             "cpuLimit": 4.0,
             "memoryLimit": 16.0,
@@ -257,7 +600,7 @@
     }
   },
   "pipelineInfo": {
-    "description": "Retrain the two-tower and promote to the live index only if offline recall did not regress.",
+    "description": "Generation-filtered, receipt-bound and fenced promotion saga for one immutable user/item embedding generation.",
     "name": "reco-retrain"
   },
   "root": {
@@ -272,9 +615,66 @@
           ],
           "inputs": {
             "parameters": {
+              "pipelinechannel--deployed_index_id": {
+                "componentInputParameter": "deployed_index_id"
+              },
+              "pipelinechannel--evaluate-active_champion_score": {
+                "taskOutputParameter": {
+                  "outputParameterKey": "active_champion_score",
+                  "producerTask": "evaluate"
+                }
+              },
+              "pipelinechannel--evaluate-active_epoch": {
+                "taskOutputParameter": {
+                  "outputParameterKey": "active_epoch",
+                  "producerTask": "evaluate"
+                }
+              },
+              "pipelinechannel--evaluate-active_generation": {
+                "taskOutputParameter": {
+                  "outputParameterKey": "active_generation",
+                  "producerTask": "evaluate"
+                }
+              },
+              "pipelinechannel--evaluate-active_manifest_generation": {
+                "taskOutputParameter": {
+                  "outputParameterKey": "active_manifest_generation",
+                  "producerTask": "evaluate"
+                }
+              },
+              "pipelinechannel--evaluate-active_manifest_sha256": {
+                "taskOutputParameter": {
+                  "outputParameterKey": "active_manifest_sha256",
+                  "producerTask": "evaluate"
+                }
+              },
+              "pipelinechannel--evaluate-active_ops_image_uri": {
+                "taskOutputParameter": {
+                  "outputParameterKey": "active_ops_image_uri",
+                  "producerTask": "evaluate"
+                }
+              },
+              "pipelinechannel--evaluate-active_source_revision": {
+                "taskOutputParameter": {
+                  "outputParameterKey": "active_source_revision",
+                  "producerTask": "evaluate"
+                }
+              },
               "pipelinechannel--evaluate-decision": {
                 "taskOutputParameter": {
                   "outputParameterKey": "decision",
+                  "producerTask": "evaluate"
+                }
+              },
+              "pipelinechannel--evaluate-manifest_generation": {
+                "taskOutputParameter": {
+                  "outputParameterKey": "manifest_generation",
+                  "producerTask": "evaluate"
+                }
+              },
+              "pipelinechannel--evaluate-manifest_sha256": {
+                "taskOutputParameter": {
+                  "outputParameterKey": "manifest_sha256",
                   "producerTask": "evaluate"
                 }
               },
@@ -284,8 +684,14 @@
                   "producerTask": "evaluate"
                 }
               },
-              "pipelinechannel--index": {
-                "componentInputParameter": "index"
+              "pipelinechannel--generation_id": {
+                "componentInputParameter": "generation_id"
+              },
+              "pipelinechannel--index_endpoint": {
+                "componentInputParameter": "index_endpoint"
+              },
+              "pipelinechannel--index_name": {
+                "componentInputParameter": "index_name"
               }
             }
           },
@@ -301,6 +707,22 @@
           "dependentTasks": [
             "train"
           ],
+          "inputs": {
+            "parameters": {
+              "deployed_index_id": {
+                "componentInputParameter": "deployed_index_id"
+              },
+              "generation_id": {
+                "componentInputParameter": "generation_id"
+              },
+              "index_endpoint": {
+                "componentInputParameter": "index_endpoint"
+              },
+              "index_name": {
+                "componentInputParameter": "index_name"
+              }
+            }
+          },
           "taskInfo": {
             "name": "evaluate"
           }
@@ -310,6 +732,22 @@
           "componentRef": {
             "name": "comp-train"
           },
+          "inputs": {
+            "parameters": {
+              "deployed_index_id": {
+                "componentInputParameter": "deployed_index_id"
+              },
+              "generation_id": {
+                "componentInputParameter": "generation_id"
+              },
+              "index_endpoint": {
+                "componentInputParameter": "index_endpoint"
+              },
+              "index_name": {
+                "componentInputParameter": "index_name"
+              }
+            }
+          },
           "taskInfo": {
             "name": "train"
           }
@@ -318,7 +756,16 @@
     },
     "inputDefinitions": {
       "parameters": {
-        "index": {
+        "deployed_index_id": {
+          "parameterType": "STRING"
+        },
+        "generation_id": {
+          "parameterType": "STRING"
+        },
+        "index_endpoint": {
+          "parameterType": "STRING"
+        },
+        "index_name": {
           "parameterType": "STRING"
         }
       }

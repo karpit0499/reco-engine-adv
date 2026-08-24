@@ -1,0 +1,85 @@
+{
+  "schema_version": 2,
+  "dataset": {
+    "name": "MovieLens 1M",
+    "source_url": "https://files.grouplens.org/datasets/movielens/ml-1m.zip",
+    "archive_sha256": "a6898adb50b9ca05aa231689da44c217cb524e7ebd39d264c56e2832f2c54e20",
+    "redistribute_raw_data": false,
+    "movies_member": "ml-1m/movies.dat",
+    "ratings_member": "ml-1m/ratings.dat",
+    "expected_catalog_items": 3883
+  },
+  "relevance": {
+    "rule": "rating >= 4",
+    "minimum_rating": 4
+  },
+  "temporal_split": {
+    "unit": "global timestamp block",
+    "train_cutoff_timestamp": 975220939,
+    "test_cutoff_timestamp": 977083270,
+    "cutoff_basis": "75th and 87.5th percentiles of all rating-event timestamps, snapped so the complete cutoff timestamp block remains in the later split",
+    "training_window": "timestamp < train_cutoff_timestamp",
+    "validation_window": "train_cutoff_timestamp <= timestamp < test_cutoff_timestamp",
+    "test_window": "timestamp >= test_cutoff_timestamp",
+    "boundary_timestamp_policy": "the complete timestamp block is assigned to the later split",
+    "target_policy": "lowest movie_id among relevant ratings in the user's first timestamp block in the stage window",
+    "later_stage_events_used_for_fit": false,
+    "equal_timestamps_split_across_fit_and_target": false
+  },
+  "cohorts": {
+    "warm": "at least 5 relevant interactions before the stage cutoff",
+    "warm_minimum_positive_interactions": 5,
+    "cold": "zero observed rating events before the stage cutoff",
+    "cold_maximum_observed_interactions": 0,
+    "primary_population": "union of declared warm and cold users with a relevant target in their first stage-window timestamp block",
+    "excluded": "users with prior history that does not satisfy the warm rule"
+  },
+  "prepared_splits": {
+    "validation_artifact": "data/prepared/validation.npz",
+    "test_artifact": "data/prepared/test.npz",
+    "validation_manifest": "splits/validation_manifest.json",
+    "test_manifest": "splits/test_manifest.json",
+    "validation_contains_test_targets": false,
+    "raw_archive_available_to_validation": false,
+    "test_access_control": "process-enforced by committed hashes and an access ledger; not a cryptographic access-control boundary"
+  },
+  "candidates": {
+    "catalog": "all 3883 movies from movies.dat",
+    "seen_exclusion": "every rating event observed before the stage cutoff, independent of relevance",
+    "cold_items_remain_candidates": true,
+    "score_tie_break": "movie_id ascending"
+  },
+  "evaluation": {
+    "cutoffs": [10, 20],
+    "metrics": [
+      "recall",
+      "ndcg",
+      "mrr",
+      "catalog_coverage",
+      "user_coverage"
+    ],
+    "primary_metric": "ndcg_at_10",
+    "simple_baselines": [
+      "popularity",
+      "item_knn"
+    ],
+    "warm_item_rule": "at least one relevant interaction in the stage fitting matrix",
+    "cold_user_fallback": "global item popularity; no randomly initialized user embedding is scored",
+    "catalog_coverage_uncertainty": "full-cohort descriptive estimate only because unique-item coverage is a non-additive set statistic",
+    "bootstrap": {
+      "unit": "evaluation user",
+      "eligible_metrics": "user-additive Recall, NDCG, MRR, and user coverage only",
+      "method": "paired nonparametric percentile bootstrap",
+      "replicates": 2000,
+      "seed": 20260820,
+      "confidence_level": 0.95
+    }
+  },
+  "selection": {
+    "data": "validation prepared split only",
+    "candidate_scope": "one predeclared representative configuration per model family; no hyperparameter sweep or optimized-family claim",
+    "rule": "maximum ndcg_at_10 over the full declared population; ties resolved by declared model order",
+    "test_evaluations_allowed_after_freeze": 1,
+    "test_acceptance_gate": "selected model paired ndcg_at_10 confidence interval lower bound versus the frozen strongest simple baseline is greater than zero"
+  }
+}

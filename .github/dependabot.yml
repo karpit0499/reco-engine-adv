@@ -1,0 +1,32 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+  - package-ecosystem: pip
+    directory: /api
+    schedule: { interval: weekly }
+  - package-ecosystem: pip
+    directory: /training
+    schedule: { interval: weekly }
+  - package-ecosystem: pip
+    directory: /dataflow
+    schedule: { interval: weekly }
+  - package-ecosystem: pip
+    directory: /generator
+    schedule: { interval: weekly }
+  - package-ecosystem: pip
+    directory: /analysis
+    schedule: { interval: weekly }
+  - package-ecosystem: pip
+    directory: /benchmarks/recommender
+    schedule: { interval: weekly }
+  - package-ecosystem: docker
+    directory: /api
+    schedule: { interval: weekly }
+  - package-ecosystem: docker
+    directory: /training
+    schedule: { interval: weekly }
+  - package-ecosystem: docker
+    directory: /pipelines
+    schedule: { interval: weekly }

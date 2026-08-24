@@ -1,7 +1,9 @@
 """mock_bundle.py — a stand-in bundle so demo/ runs before you've touched GCP.
 
-It fabricates the same SHAPE the real export produces, with the same structure the trained
-model would have found: five category centroids in 32-d, items scattered around their
+It fabricates the same versioned demo-bundle CONTRACT as the real export. Its ranker declares
+the mock-only one-hot/binary scoring path; a real export declares label-index/softmax instead.
+The synthetic data has the structure a trained model would have found: five category centroids
+in 32-d, items scattered around their
 centroid, users near the centroid of the category they secretly prefer, and item norms that
 grow with popularity (which is exactly the popularity bias dot-product retrieval really has —
 and exactly what the ranker exists to correct).
@@ -22,6 +24,14 @@ import xgboost as xgb
 
 OUT = pathlib.Path(__file__).resolve().parent.parent / "demo" / "data"
 OUT.mkdir(parents=True, exist_ok=True)
+# A golden file is evidence from a particular real cloud export. Keeping it beside freshly
+# generated synthetic vectors produces a plausible-looking but meaningless fidelity result.
+# Remove it before doing any generation so even a later failure cannot leave a mixed bundle.
+(OUT / "golden.json").unlink(missing_ok=True)
+# A real export publishes a versioned directory through this atomic pointer.
+# Mock generation must opt back into the direct synthetic files or the browser
+# would keep loading the prior real bundle despite freshly written mock JSON.
+(OUT / "current.json").unlink(missing_ok=True)
 
 CATS = ["electronics", "books", "home", "sports", "beauty"]
 N_ITEMS, N_USERS, DIM = 500, 300, 32
@@ -116,12 +126,24 @@ trees = [{"l": t["left_children"], "r": t["right_children"], "i": t["split_indic
           "c": [float(v) for v in t["split_conditions"]], "d": t["default_left"]}
          for t in raw["learner"]["gradient_booster"]["model"]["trees"]]
 
-json.dump({"features": FEATS, "base_margin": math.log(bs / (1 - bs)), "trees": trees,
-           "cat_names": {c: f"category_{c}" for c in CATS}},
-          open(OUT / "ranker.json", "w"))
+json.dump({
+    "format": "reco-ranker",
+    "schema_version": 1,
+    "features": FEATS,
+    "encoding": {
+        "type": "one_hot",
+        "source_feature": "category",
+        "columns": {c: f"category_{c}" for c in CATS},
+    },
+    "objective": {
+        "type": "binary:logistic",
+        "base_margin": math.log(bs / (1 - bs)),
+    },
+    "trees": trees,
+}, open(OUT / "ranker.json", "w"))
 
 kb = sum(p.stat().st_size for p in OUT.glob("*.json")) // 1024
-json.dump({"headline_lift": "mock data", "bundle_kb": kb, "mock": True},
+json.dump({"bundle_kb": kb, "mock": True, "evidence": "synthetic_demo_only"},
           open(OUT / "experiment.json", "w"))
 
 print(f"wrote {len(list(OUT.glob('*.json')))} files to {OUT}  ({kb} KB total)")
