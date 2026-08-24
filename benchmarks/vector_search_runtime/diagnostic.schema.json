@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/karpit0499/reco-engine-adv/benchmarks/vector_search_runtime/diagnostic.schema.json",
+  "title": "Vertex runtime benchmark dry-run or refusal diagnostic",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "artifact_kind",
+    "status",
+    "stage",
+    "recorded_at",
+    "error",
+    "input_artifact_sha256",
+    "plan"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "artifact_kind": {"const": "vertex_runtime_benchmark_diagnostic"},
+    "status": {"enum": ["planned", "refused"]},
+    "stage": {
+      "enum": [
+        "dry_run",
+        "input_validation",
+        "authorization",
+        "repository_binding",
+        "control_preflight",
+        "report_validation"
+      ]
+    },
+    "recorded_at": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "error": {"oneOf": [{"$ref": "#/$defs/error"}, {"type": "null"}]},
+    "input_artifact_sha256": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "plan": {"oneOf": [{"$ref": "#/$defs/plan"}, {"type": "null"}]}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "planned"}}},
+      "then": {
+        "properties": {
+          "stage": {"const": "dry_run"},
+          "error": {"type": "null"},
+          "input_artifact_sha256": {"type": "string"},
+          "plan": {"$ref": "#/$defs/plan"}
+        }
+      },
+      "else": {"properties": {"error": {"$ref": "#/$defs/error"}}}
+    }
+  ],
+  "$defs": {
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stage", "type"],
+      "properties": {
+        "stage": {
+          "enum": [
+            "input_validation",
+            "authorization",
+            "repository_binding",
+            "control_preflight",
+            "report_validation"
+          ]
+        },
+        "type": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]{0,127}$"}
+      }
+    },
+    "plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dry_run_default",
+        "planned_cloud_api_calls",
+        "planned_exact_scalar_operations",
+        "hard_caps",
+        "required_confirmation_phrase"
+      ],
+      "properties": {
+        "dry_run_default": {"const": true},
+        "planned_cloud_api_calls": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "bigquery_active_pointer_queries",
+            "gcs_manifest_metadata_reads",
+            "gcs_generation_pinned_manifest_downloads",
+            "vertex_index_metadata_reads",
+            "vertex_endpoint_metadata_reads",
+            "vertex_find_neighbors_calls",
+            "total_potentially_billable_calls"
+          ],
+          "properties": {
+            "bigquery_active_pointer_queries": {"const": 2},
+            "gcs_manifest_metadata_reads": {"const": 2},
+            "gcs_generation_pinned_manifest_downloads": {"const": 2},
+            "vertex_index_metadata_reads": {"const": 2},
+            "vertex_endpoint_metadata_reads": {"const": 3},
+            "vertex_find_neighbors_calls": {"type": "integer", "minimum": 20, "maximum": 550},
+            "total_potentially_billable_calls": {"type": "integer", "minimum": 31, "maximum": 561}
+          }
+        },
+        "planned_exact_scalar_operations": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500000000
+        },
+        "hard_caps": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "catalog_items",
+            "measured_queries",
+            "warmups",
+            "top_k",
+            "exact_scalar_operations",
+            "potentially_billable_calls"
+          ],
+          "properties": {
+            "catalog_items": {"const": 100000},
+            "measured_queries": {"const": 500},
+            "warmups": {"const": 50},
+            "top_k": {"const": 100},
+            "exact_scalar_operations": {"const": 500000000},
+            "potentially_billable_calls": {"const": 561}
+          }
+        },
+        "required_confirmation_phrase": {
+          "type": "string",
+          "pattern": "^EXECUTE [0-9]+ POTENTIALLY BILLED CLOUD API CALLS FOR [A-Za-z0-9][A-Za-z0-9._-]{0,63}@[1-9][0-9]*$"
+        }
+      }
+    }
+  }
+}

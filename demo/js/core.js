@@ -7,33 +7,160 @@
  *
  * NOTE ON EXACT vs APPROXIMATE. Vector Search runs tree-AH (an ANN index) because a
  * production catalogue is millions of items. This catalogue is 500. 500 x 32 = 16,000
- * multiply-adds per query — an exact scan finishes in under a millisecond. ANN exists to
- * make this *scale*, not to make it *work*. The demo therefore does exact nearest-neighbour
- * and reports its disagreement with the deployed ANN index openly (Lab -> Fidelity).
+ * multiply-adds per query, so the demo can use an exact scan. No browser latency claim is
+ * made without a checked benchmark. The demo reports disagreement with the deployed ANN
+ * index openly (Lab -> Fidelity).
  */
 
 export const B = { items: null, users: null, ranker: null, experiment: null, golden: null };
+export const RANKER_SCHEMA_VERSION = 1;
+
+const failRanker = (message) => { throw new Error(`Invalid ranker schema: ${message}`); };
+const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+const isSequence = (v) => Array.isArray(v) || ArrayBuffer.isView(v);
+
+/* The exported cloud ranker and the local mock ranker deliberately use different XGBoost
+ * objectives and category encodings. The schema makes those differences executable instead
+ * of relying on optional fields that can silently select the wrong scoring path. */
+export function validateRanker(ranker) {
+  if (!isObject(ranker)) failRanker('root must be an object');
+  if (ranker.format !== 'reco-ranker') failRanker('format must be "reco-ranker"');
+  if (ranker.schema_version !== RANKER_SCHEMA_VERSION) {
+    failRanker(`unsupported schema_version ${JSON.stringify(ranker.schema_version)}; expected ${RANKER_SCHEMA_VERSION}`);
+  }
+
+  const F = ranker.features;
+  if (!Array.isArray(F) || !F.length || F.some((f) => typeof f !== 'string' || !f)) {
+    failRanker('features must be a non-empty array of names');
+  }
+  if (new Set(F).size !== F.length) failRanker('feature names must be unique');
+
+  const trees = ranker.trees;
+  if (!Array.isArray(trees) || !trees.length) failRanker('trees must be a non-empty array');
+  for (const [treeNo, t] of trees.entries()) {
+    if (!isObject(t)) failRanker(`tree ${treeNo} must be an object`);
+    const fields = ['l', 'r', 'i', 'c', 'd'];
+    if (fields.some((k) => !isSequence(t[k]))) {
+      failRanker(`tree ${treeNo} must contain array fields l, r, i, c, d`);
+    }
+    const n = t.l.length;
+    if (!n || fields.some((k) => t[k].length !== n)) {
+      failRanker(`tree ${treeNo} node arrays must be non-empty and equal length`);
+    }
+    for (let node = 0; node < n; node++) {
+      if (!Number.isFinite(t.c[node])) failRanker(`tree ${treeNo} node ${node} has a non-numeric value`);
+      if (![0, 1, false, true].includes(t.d[node])) {
+        failRanker(`tree ${treeNo} node ${node} has an invalid missing-value direction`);
+      }
+      const leaf = t.l[node] === -1 && t.r[node] === -1;
+      if (!leaf) {
+        if (!Number.isInteger(t.l[node]) || !Number.isInteger(t.r[node]) ||
+            t.l[node] < 0 || t.r[node] < 0 || t.l[node] >= n || t.r[node] >= n) {
+          failRanker(`tree ${treeNo} node ${node} has invalid children`);
+        }
+        if (!Number.isInteger(t.i[node]) || t.i[node] < 0 || t.i[node] >= F.length) {
+          failRanker(`tree ${treeNo} node ${node} has an invalid feature index`);
+        }
+      } else if (t.l[node] !== t.r[node]) {
+        failRanker(`tree ${treeNo} node ${node} is only half a leaf`);
+      }
+    }
+  }
+
+  const enc = ranker.encoding;
+  if (!isObject(enc) || !['label_index', 'one_hot'].includes(enc.type)) {
+    failRanker('encoding.type must be "label_index" or "one_hot"');
+  }
+  if (enc.source_feature !== 'category') {
+    failRanker('encoding.source_feature must be "category"');
+  }
+  if (enc.type === 'label_index') {
+    if (typeof enc.feature !== 'string' || !F.includes(enc.feature)) {
+      failRanker('label_index encoding.feature must name a model feature');
+    }
+    if (enc.feature_index !== F.indexOf(enc.feature)) {
+      failRanker('label_index feature_index does not match features');
+    }
+    if (!Array.isArray(enc.vocabulary) || !enc.vocabulary.length ||
+        enc.vocabulary.some((v) => typeof v !== 'string') ||
+        new Set(enc.vocabulary).size !== enc.vocabulary.length) {
+      failRanker('label_index vocabulary must contain unique strings');
+    }
+    if (enc.unknown !== 'missing') failRanker('label_index unknown policy must be "missing"');
+  } else {
+    if (!isObject(enc.columns) || !Object.keys(enc.columns).length ||
+        Object.entries(enc.columns).some(([category, feature]) => !category || !F.includes(feature))) {
+      failRanker('one_hot columns must map categories to model features');
+    }
+    if (new Set(Object.values(enc.columns)).size !== Object.values(enc.columns).length) {
+      failRanker('one_hot columns must map to distinct model features');
+    }
+  }
+
+  const objective = ranker.objective;
+  if (!isObject(objective) || !['binary:logistic', 'multi:softprob'].includes(objective.type)) {
+    failRanker('objective.type must be "binary:logistic" or "multi:softprob"');
+  }
+  if (objective.type === 'binary:logistic') {
+    if (enc.type !== 'one_hot') failRanker('binary:logistic requires one_hot encoding in schema v1');
+    if (!Number.isFinite(objective.base_margin)) failRanker('binary objective requires a finite base_margin');
+  } else {
+    if (enc.type !== 'label_index') failRanker('multi:softprob requires label_index encoding in schema v1');
+    if (!Number.isInteger(objective.groups) || objective.groups < 2) {
+      failRanker('multi objective groups must be an integer >= 2');
+    }
+    if (!Number.isInteger(objective.positive_group) || objective.positive_group < 0 ||
+        objective.positive_group >= objective.groups) {
+      failRanker('multi objective positive_group is out of range');
+    }
+    if (!Array.isArray(objective.tree_groups) || objective.tree_groups.length !== trees.length ||
+        objective.tree_groups.some((g) => !Number.isInteger(g) || g < 0 || g >= objective.groups)) {
+      failRanker('multi objective tree_groups must assign every tree to a valid group');
+    }
+  }
+  return ranker;
+}
 
 const J = (p) => fetch(p).then((r) => {
   if (!r.ok) throw new Error(`${p} -> ${r.status}. Serve over http (python3 -m http.server), not file://`);
   return r.json();
 });
 
+const optionalBundlePointer = async () => {
+  const path = 'data/current.json';
+  const response = await fetch(path);
+  if (response.status === 404) return null; // mock/legacy bundle
+  if (!response.ok) throw new Error(`${path} -> ${response.status}`);
+  const pointer = await response.json();
+  if (!isObject(pointer) || pointer.schema_version !== 1 ||
+      typeof pointer.bundle !== 'string' ||
+      !/^bundles\/[A-Za-z0-9][A-Za-z0-9._-]{0,159}$/.test(pointer.bundle)) {
+    throw new Error('data/current.json has an invalid atomic-bundle pointer');
+  }
+  return pointer;
+};
+
 export async function load() {
+  const pointer = await optionalBundlePointer();
+  const root = pointer ? `data/${pointer.bundle}` : 'data';
   const [items, users, ranker, experiment, golden] = await Promise.all([
-    J('data/items.json'), J('data/users.json'), J('data/ranker.json'),
-    J('data/experiment.json'), J('data/golden.json').catch(() => null),
+    J(`${root}/items.json`), J(`${root}/users.json`), J(`${root}/ranker.json`),
+    J(`${root}/experiment.json`), J(`${root}/golden.json`).catch(() => null),
   ]);
   items.E = Float32Array.from(items.emb);          // 500 x dim, row-major
   items.XY = Float32Array.from(items.xy);          // 2-D projection of the learned space
   items.index = new Map(items.ids.map((id, i) => [id, i]));
   users.E = Float32Array.from(users.emb);
   users.index = new Map(users.ids.map((id, i) => [id, i]));
+  validateRanker(ranker);
   // Split conditions and leaf values become Float32Array. This is NOT a memory optimisation:
   // XGBoost evaluates its trees in float32, and comparing a float64 feature against a float64
   // copy of a float32 threshold misroutes rows that sit on a boundary. See walk(), below.
   for (const t of ranker.trees) t.c = Float32Array.from(t.c);
-  Object.assign(B, { items, users, ranker, experiment, golden });
+  // mock_bundle.py deletes any golden file from an earlier cloud export. This second guard
+  // also prevents a stale browser or CDN response from mixing real evidence with mock data.
+  const compatibleGolden = experiment?.mock === true ? null : golden;
+  Object.assign(B, { items, users, ranker, experiment, golden: compatibleGolden });
   return B;
 }
 
@@ -132,14 +259,15 @@ export function retrieve(vec, k = 50) {
   return out.slice(0, k);
 }
 
-/* ── Stage 2: ranking (the BQML boosted tree, walked in the browser) ──────────
- * Exported from BigQuery with save_model()'s flat-array JSON, NOT get_dump() — get_dump
+/* ── Stage 2: ranking (an exported XGBoost ensemble, walked in the browser) ──────
+ * Exported with save_model()'s flat-array JSON, NOT get_dump() — get_dump
  * rounds split_condition, which silently misroutes rows that sit on a split boundary.
  *   leaf            left_children[i] === -1
  *   leaf value      split_conditions[i]
  *   branch          x[split_indices[i]] < split_conditions[i] ? left : right
  *   missing         default_left[i]
- *   probability     sigmoid(base_margin + sum of leaves)
+ *   mock probability  sigmoid(base_margin + sum of leaves)
+ *   real probability  group trees by class, softmax margins, take P(label=1)
  *
  * ⚠️ Math.fround() IS THE POINT. XGBoost stores split conditions as float32 and compares in
  * float32. Every number in JavaScript is a float64. Compare a float64 feature value against a
@@ -150,28 +278,46 @@ export function retrieve(vec, k = 50) {
  * (t.c is a Float32Array from load(), so the right-hand side is already float32.)      */
 const sigmoid = (z) => 1 / (1 + Math.exp(-z));
 
-function walk(t, row, F) {
+function walk(t, values) {
   let i = 0;
   while (t.l[i] !== -1) {
-    const v = row[F[t.i[i]]];
-    const goLeft = v === undefined ? !!t.d[i] : Math.fround(v) < t.c[i];
+    const v = values[t.i[i]];
+    const goLeft = v == null || Number.isNaN(v) ? !!t.d[i] : Math.fround(v) < t.c[i];
     i = goLeft ? t.l[i] : t.r[i];
   }
   return t.c[i];
 }
 
-export function score(featureRow) {
-  const R = B.ranker;
-  let m = R.base_margin;
-  for (const t of R.trees) m += walk(t, featureRow, R.features);
-  return sigmoid(m);
+function encodedValues(featureRow, R) {
+  const values = R.features.map((f) => featureRow[f]);
+  if (R.encoding.type === 'label_index') {
+    const raw = featureRow[R.encoding.feature];
+    const label = raw == null ? -1 : R.encoding.vocabulary.indexOf(String(raw));
+    values[R.encoding.feature_index] = label < 0 ? undefined : label;
+  }
+  return values;
 }
 
-/* Build the ranker's input row. The one-hot column NAMES come from the exported model
-   (`cat_names`), never from a guess in this file: BigQuery ML picks its own encoding, and a
-   name that doesn't match a split just reads as `undefined` -> the tree silently takes its
-   `default_left` branch and the ranking quietly degrades. Nothing errors. The export script
-   checks every row against ML.PREDICT before it ships, which is what catches this. */
+export function score(featureRow) {
+  const R = B.ranker;
+  const values = encodedValues(featureRow, R);
+  if (R.objective.type === 'binary:logistic') {
+    let margin = R.objective.base_margin;
+    for (const t of R.trees) margin += walk(t, values);
+    return sigmoid(margin);
+  }
+
+  const margins = Array(R.objective.groups).fill(0);
+  R.trees.forEach((t, i) => { margins[R.objective.tree_groups[i]] += walk(t, values); });
+  const maxMargin = Math.max(...margins);
+  const probabilities = margins.map((m) => Math.exp(m - maxMargin));
+  const total = probabilities.reduce((a, b) => a + b, 0);
+  return probabilities[R.objective.positive_group] / total;
+}
+
+/* Build the ranker's raw input row. Category encoding is described by the versioned bundle:
+   the mock classifier maps it to one-hot columns, while the BQML export keeps the raw category
+   here and label-indexes it immediately before tree traversal. */
 export function rankRow(uf, item) {
   const R = B.ranker;
   const row = {};
@@ -182,8 +328,12 @@ export function rankRow(uf, item) {
   row.price = item.price;
   row.popularity_7d = item.popularity_7d;
   row.same_category = uf.top_category === item.category ? 1 : 0;
-  const oneHot = R.cat_names?.[item.category];
-  if (oneHot) row[oneHot] = 1;
+  if (R.encoding.type === 'one_hot') {
+    const oneHot = R.encoding.columns[item.category];
+    if (oneHot) row[oneHot] = 1;
+  } else {
+    row[R.encoding.feature] = item.category;
+  }
   return row;
 }
 

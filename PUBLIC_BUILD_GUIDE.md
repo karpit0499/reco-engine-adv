@@ -1,5 +1,17 @@
 # Real-Time Recommender Engine on GCP — Public Build Guide
 
+> [!CAUTION]
+> **Archived design narrative — do not execute these commands as a deployment
+> recipe.** This long-form guide preserves the original build history, including
+> an obsolete public API, mutable in-place index refresh, latest-value training
+> joins, and dependency pins that no longer describe the audited repository.
+> The current code uses an authenticated API and generation-filtered promotion;
+> use [`README.md`](./README.md),
+> [`TECHNICAL_DOCUMENTATION.md`](./TECHNICAL_DOCUMENTATION.md),
+> [`pipelines/GENERATION_PROMOTION.md`](./pipelines/GENERATION_PROMOTION.md), and
+> the checked requirement files instead. Running GCP commands can create
+> billable resources and is intentionally not part of repository CI.
+
 **A complete, reproducible, beginner-friendly guide to building a production-shaped recommender system on Google Cloud, from an empty project to a running A/B test with a gated retraining pipeline.**
 
 Every command, every file, and every gotcha is written out in full. Nothing is left as an exercise. The guide was executed end-to-end on a clean GCP project, and the failures encountered along the way are documented *inline, at the step where they fire* — because a build guide that only shows the happy path teaches you nothing about the day the happy path stops working.
@@ -971,7 +983,7 @@ Console → **BigQuery → Scheduled queries → Create scheduled query**. Paste
 ```bash
 mkdir -p ~/dev/reco-engine-adv/featurestore
 cd ~/dev/reco-engine-adv && source .venv/bin/activate
-pip install "google-cloud-aiplatform>=1.71"
+pip install "google-cloud-aiplatform==1.165.1"
 ```
 
 **`featurestore/register.py`**:
@@ -1251,10 +1263,10 @@ tf-keras==2.17.0
 tensorflow-io-gcs-filesystem==0.37.1
 google-cloud-bigquery==3.25.0
 google-cloud-bigquery-storage==2.27.0
-google-cloud-storage==2.18.2
+google-cloud-storage==3.0.0
 db-dtypes==1.3.0
 pandas==2.2.2
-protobuf==4.25.5
+protobuf==4.25.9
 numpy==1.26.4
 scipy==1.13.1
 ```
@@ -1280,7 +1292,7 @@ pip install --no-deps tensorflow-recommenders==0.7.3      # --no-deps is load-be
 > # 2.17.0 tf_keras.api._v2.keras     <-- 'tf_keras', not 'keras'. If it says 'keras', the env var didn't take.
 > ```
 
-> **`protobuf==4.25.5` is pinned on purpose.** TF 2.17 and the `google-cloud-*` libraries still call `MessageFactory.GetPrototype`, which protobuf 5 removed. Unpinned, you get a stream of `AttributeError: 'MessageFactory' object has no attribute 'GetPrototype'` — non-fatal here, but noisy enough to mask a *real* BigQuery error underneath it.
+> **`protobuf==4.25.9` is pinned on purpose.** TF 2.17 requires the protobuf 4 line; the patched 4.25.9 release also avoids the advisories affecting the earlier pin.
 
 > **⚠️ `numpy==1.26.4` and `scipy==1.13.1` are pinned for the same reason, and they are the two that will actually cost you an evening.** **TensorFlow 2.17's wheels are compiled against NumPy 1.x.** Nothing in this file's TF/BigQuery layer will pull NumPy 2 on its own — but `pip install google-cloud-aiplatform` (Step 7.4, and again in Step 15.3's image) **will**, along with a SciPy built for NumPy 2. Neither pin exists to make *this* step work. They exist so that a later, unrelated `pip install` cannot silently break this one.
 >
@@ -1301,9 +1313,9 @@ pip install --no-deps tensorflow-recommenders==0.7.3      # --no-deps is load-be
 >
 > **The repair, if you're reading this after the fact** — all three in one command, because fixing them one at a time just walks you through the acts:
 > ```bash
-> pip install "numpy==1.26.4" "scipy==1.13.1" "protobuf==4.25.5"
+> pip install "numpy==1.26.4" "scipy==1.13.1" "protobuf==4.25.9"
 > python -c "import numpy, scipy, google.protobuf; print(numpy.__version__, scipy.__version__, google.protobuf.__version__)"
-> # 1.26.4 1.13.1 4.25.5
+> # 1.26.4 1.13.1 4.25.9
 > python -c "import tensorflow as tf; print(tf.__version__)"   # 2.17.0, no traceback
 > pip check                                                    # anything still conflicting?
 > ```
@@ -1551,15 +1563,15 @@ Now install the submission SDK and submit:
 
 ```bash
 cd ~/dev/reco-engine-adv && source .venv/bin/activate
-pip install google-cloud-aiplatform
-pip install "protobuf==4.25.5" "numpy==1.26.4" "scipy==1.13.1"   # NOT optional — read the box below
+pip install "google-cloud-aiplatform==1.165.1"
+pip install "protobuf==4.25.9" "numpy==1.26.4" "scipy==1.13.1"   # NOT optional — read the box below
 python -c "import numpy, scipy, google.protobuf, tensorflow as tf; \
 print(numpy.__version__, scipy.__version__, google.protobuf.__version__, tf.__version__)"
-# 1.26.4 1.13.1 4.25.5 2.17.0   <-- any other numbers here and TensorFlow in this venv is broken
+# 1.26.4 1.13.1 4.25.9 2.17.0   <-- the checked compatibility set
 python training/submit_job.py
 ```
 
-> **⚠️ `pip install google-cloud-aiplatform` will break your local TensorFlow, quietly — and in three places, not one.** The SDK depends on `google-genai`, which requires a modern `protobuf` — so pip **uninstalls the `protobuf==4.25.5` you pinned in Step 7.1** and drops protobuf 6.x in its place. In the same pass the resolver also lifts **NumPy to 2.x** and pulls a **SciPy built against NumPy 2**, both of which TensorFlow 2.17 cannot live with (see the pins box in Step 7.1). That is why the re-pin line above names all three. It tells you what it's doing, but only as a wall of resolver text you will scroll past:
+> **Compatibility note.** Install the checked SDK version and then reassert the TensorFlow-compatible NumPy/protobuf pins from the repository requirements; do not rely on this archived resolver narrative.
 > ```
 > tensorflow 2.17.0 requires protobuf ... <5.0.0dev, but you have protobuf 6.33.6 which is incompatible.
 > ```
@@ -2060,15 +2072,15 @@ def feedback():
 **`api/requirements.txt`**:
 
 ```
-flask==3.0.3
+flask==3.1.3
 gunicorn==23.0.0
 google-cloud-bigquery==3.25.0
-google-cloud-aiplatform==1.71.0
+google-cloud-aiplatform==1.165.1
 ```
 
 > **`gunicorn` is pinned at 23.0.0, not 22.** Gunicorn 22.0.0 carries a request-smuggling CVE (improper handling of conflicting `Transfer-Encoding` headers), fixed in 23. Your API is `--allow-unauthenticated` and on the public internet, so this is not a theoretical concern — and "I pinned past a known CVE in my web server" is a good sentence to have available.
 
-> **On `google-cloud-aiplatform==1.71.0`:** the `MatchingEngineIndex` / `MatchingEngineIndexEndpoint` classes and every method this guide calls on them (`create_tree_ah_index`, `deploy_index`, `find_neighbors`, `upsert_datapoints`) are still present and unchanged on **1.160.0**, the current release. Pinning is about reproducibility, not about avoiding a break — bump it freely, and re-run Phase 9 afterwards to prove nothing moved.
+> The audited repository pins `google-cloud-aiplatform==1.165.1`; use the checked code and tests rather than the archived API snippets below.
 
 **`api/Dockerfile`**:
 
@@ -2487,9 +2499,9 @@ User vectors refresh with no extra step — `train.py` appends to `user_embeddin
 > Both traces point at NumPy, SciPy and TensorFlow, and none of them mentions the Google SDK that actually caused it. **Repair all three in one command**, then verify before you re-run:
 >
 > ```bash
-> pip install "numpy==1.26.4" "scipy==1.13.1" "protobuf==4.25.5"
+> pip install "numpy==1.26.4" "scipy==1.13.1" "protobuf==4.25.9"
 > python -c "import numpy, scipy, google.protobuf; print(numpy.__version__, scipy.__version__, google.protobuf.__version__)"
-> # 1.26.4 1.13.1 4.25.5
+> # 1.26.4 1.13.1 4.25.9
 > python -c "import tensorflow as tf; print(tf.__version__)"   # 2.17.0, clean
 > pip check                                                    # surfaces anything else the resolver moved
 > ```
@@ -2527,7 +2539,7 @@ cd ~/dev/reco-engine-adv
 /opt/homebrew/bin/python3.12 -m venv .venv-kfp
 source .venv-kfp/bin/activate
 
-pip install "kfp==2.17.0" "google-cloud-aiplatform>=1.71.0"
+pip install "kfp==2.17.0" "google-cloud-aiplatform==1.165.1"
 python -c "import kfp; print(kfp.__version__)"    # 2.17.0
 deactivate
 ```
@@ -2675,8 +2687,8 @@ RUN pip install --no-cache-dir --no-deps tensorflow-recommenders==0.7.3
 # refresh_index.py needs the aiplatform SDK — which will yank protobuf to 6.x and NumPy
 # to 2.x and break TensorFlow inside this image, exactly as it did in your venv in Step
 # 7.4. Re-assert the pins immediately afterwards. Order matters; do not reorder these.
-RUN pip install --no-cache-dir google-cloud-aiplatform
-RUN pip install --no-cache-dir "protobuf==4.25.5" "numpy==1.26.4" "scipy==1.13.1"
+RUN pip install --no-cache-dir "google-cloud-aiplatform==1.165.1"
+RUN pip install --no-cache-dir "protobuf==4.25.9" "numpy==1.26.4" "scipy==1.13.1"
 
 # Fail the BUILD, not the pipeline at 3am, if the pins didn't survive.
 RUN python -c "import numpy, scipy, google.protobuf, tensorflow as tf; \
@@ -2728,7 +2740,7 @@ cd ~/dev/reco-engine-adv
 gcloud builds submit --config cloudbuild.yaml --project reco-engine-adv .
 ```
 
-Watch the log for `deps ok: 1.26.4 4.25.5 2.17.0`. If the build dies on that `RUN python -c` line, the pins lost the fight — which is exactly what you asked that line to tell you.
+Watch the log for `deps ok: 1.26.4 4.25.9 2.17.0`. If the build dies on that `RUN python -c` line, the pins lost the fight — which is exactly what you asked that line to tell you.
 
 ### Step 15.3.4 — The pipeline
 

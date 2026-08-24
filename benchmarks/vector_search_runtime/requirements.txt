@@ -1,0 +1,4 @@
+google-cloud-aiplatform==1.165.1
+google-cloud-bigquery==3.43.0
+google-cloud-storage==3.13.1
+jsonschema==4.26.0

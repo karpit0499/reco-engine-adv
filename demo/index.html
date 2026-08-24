@@ -3,12 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>reco-engine-adv — a recommender you can watch think</title>
-<meta name="description" content="A two-tower retrieval model, a boosted-tree ranker and a live A/B test, running entirely in your browser. Built on GCP; served from 400 KB of exported vectors.">
+<meta name="description" content="A clearly labelled synthetic recommender scaffold with two-stage ranking and A/B instrumentation, running entirely in your browser.">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div class="wrap">
+
+  <aside class="data-banner" id="data-banner" hidden aria-live="polite">
+    <strong>MOCK / SYNTHETIC DATA</strong>
+    <span>Interactive scaffold only. Every recommendation, traffic count, CTR, and lift on this
+      page is simulated; none of it is production or business evidence.</span>
+  </aside>
 
   <header class="top">
     <div class="brand">
@@ -18,7 +25,7 @@
     <nav class="tabs" role="tablist">
       <button role="tab" id="t-shop" aria-selected="true"  aria-controls="p-shop">Shop</button>
       <button role="tab" id="t-lab"  aria-selected="false" aria-controls="p-lab">Lab</button>
-      <button role="tab" id="t-ask"  aria-selected="false" aria-controls="p-ask">Ask</button>
+      <button role="tab" id="t-ask" aria-selected="false" aria-controls="p-ask" aria-disabled="true" disabled>Ask (disabled)</button>
     </nav>
   </header>
 
@@ -171,10 +178,9 @@
         <button class="btn" id="send">Send</button>
       </div>
       <p class="prose" style="margin:14px 0 0;font-size:12.5px">
-        The model does not invent recommendations. It calls the <em>same</em> functions this page
-        calls — <code>get_variant</code>, <code>recommend</code>, <code>explain_item</code>,
-        <code>experiment_status</code> — and narrates what comes back. If it can't get an answer
-        from a tool, it says so.
+        Remote narration is disabled in the public build because its Worker source, retention
+        policy, and origin controls are not part of this repository. No prompt, transcript,
+        recommendation, or tool output is sent to a third-party model endpoint.
       </p>
     </div>
   </main>

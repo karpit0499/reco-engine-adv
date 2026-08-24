@@ -1,0 +1,200 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/karpit0499/reco-engine-adv/benchmarks/vector_search_runtime/input.schema.json",
+  "title": "Private active-generation runtime input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "artifact_kind",
+    "created_at",
+    "source",
+    "expected_active_pointer",
+    "manifest_contract",
+    "catalog",
+    "queries"
+  ],
+  "properties": {
+    "schema_version": {"const": 2},
+    "artifact_kind": {"const": "production_generation_embedding_snapshot"},
+    "created_at": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "source": {"$ref": "#/$defs/source"},
+    "expected_active_pointer": {"$ref": "#/$defs/activePointer"},
+    "manifest_contract": {"$ref": "#/$defs/manifestContract"},
+    "catalog": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["distance_metric", "items"],
+      "properties": {
+        "distance_metric": {"$ref": "#/$defs/distanceMetric"},
+        "items": {
+          "type": "array",
+          "minItems": 100,
+          "maxItems": 100000,
+          "items": {"$ref": "#/$defs/vectorRow"}
+        }
+      }
+    },
+    "queries": {
+      "type": "array",
+      "minItems": 20,
+      "maxItems": 500,
+      "items": {"$ref": "#/$defs/vectorRow"}
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "generationId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+    },
+    "gsUri": {"type": "string", "pattern": "^gs://[^/]+/.+[^/]$"},
+    "indexResource": {
+      "type": "string",
+      "pattern": "^projects/[^/]+/locations/[^/]+/indexes/[^/]+$"
+    },
+    "endpointResource": {
+      "type": "string",
+      "pattern": "^projects/[^/]+/locations/[^/]+/indexEndpoints/[^/]+$"
+    },
+    "deployedIndexId": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_]{0,127}$"
+    },
+    "distanceMetric": {
+      "enum": ["DOT_PRODUCT_DISTANCE", "COSINE_DISTANCE", "SQUARED_L2_DISTANCE"]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "contains_synthetic_data",
+        "description",
+        "interaction_count",
+        "provenance_verification"
+      ],
+      "properties": {
+        "kind": {"const": "production_interaction_embedding_export"},
+        "contains_synthetic_data": {"const": false},
+        "description": {"type": "string", "minLength": 1, "maxLength": 1024},
+        "interaction_count": {"type": "integer", "minimum": 1, "maximum": 1000000000000},
+        "provenance_verification": {"const": "operator_attested"}
+      }
+    },
+    "manifestIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["uri", "object_generation", "sha256"],
+      "properties": {
+        "uri": {"$ref": "#/$defs/gsUri"},
+        "object_generation": {"type": "integer", "minimum": 1},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "serving": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["index_resource", "index_endpoint", "deployed_index_id"],
+      "properties": {
+        "index_resource": {"$ref": "#/$defs/indexResource"},
+        "index_endpoint": {"$ref": "#/$defs/endpointResource"},
+        "deployed_index_id": {"$ref": "#/$defs/deployedIndexId"}
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ops_image_uri", "source_revision"],
+      "properties": {
+        "ops_image_uri": {
+          "type": "string",
+          "pattern": "^[^\\s:@]+(?:/[^\\s:@]+)+@sha256:[0-9a-f]{64}$"
+        },
+        "source_revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"}
+      }
+    },
+    "activePointer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "table",
+        "generation_id",
+        "epoch",
+        "fence_epoch",
+        "previous_generation_id",
+        "manifest",
+        "provenance",
+        "retained_generation_ids",
+        "champion_score",
+        "serving",
+        "promoted_at"
+      ],
+      "properties": {
+        "table": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{4,28}[a-z0-9]\\.reco\\.active_embedding_generation$"
+        },
+        "generation_id": {"$ref": "#/$defs/generationId"},
+        "epoch": {"type": "integer", "minimum": 1},
+        "fence_epoch": {"type": "integer", "minimum": 1},
+        "previous_generation_id": {
+          "oneOf": [{"$ref": "#/$defs/generationId"}, {"type": "null"}]
+        },
+        "manifest": {"$ref": "#/$defs/manifestIdentity"},
+        "provenance": {"$ref": "#/$defs/provenance"},
+        "retained_generation_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/generationId"}
+        },
+        "champion_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "serving": {"$ref": "#/$defs/serving"},
+        "promoted_at": {"type": "string", "format": "date-time", "pattern": "Z$"}
+      }
+    },
+    "manifestContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "dimensions", "items"],
+      "properties": {
+        "schema_version": {"const": 3},
+        "dimensions": {"type": "integer", "minimum": 1, "maximum": 2048},
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["count", "sha256", "canonical_uri", "canonical_object_generation"],
+          "properties": {
+            "count": {"type": "integer", "minimum": 100, "maximum": 100000},
+            "sha256": {"$ref": "#/$defs/sha256"},
+            "canonical_uri": {"$ref": "#/$defs/gsUri"},
+            "canonical_object_generation": {"type": "integer", "minimum": 1}
+          }
+        }
+      }
+    },
+    "vectorRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "embedding"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+\\-]{0,255}$"
+        },
+        "embedding": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2048,
+          "items": {"type": "number"}
+        }
+      }
+    }
+  }
+}

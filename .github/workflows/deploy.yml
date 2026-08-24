@@ -1,24 +1,45 @@
 name: Deploy reco-engine
 on:
-  push:
-    branches: [main]
-permissions:
-  contents: read
-  id-token: write
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type DEPLOY to run the cost-bearing GCP deployment
+        required: true
+        type: string
+
+permissions: {}
+
 jobs:
   deploy:
+    if: ${{ inputs.confirm == 'DEPLOY' }}
     runs-on: ubuntu-latest
+    environment: gcp-production
+    permissions:
+      contents: read
+      id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - id: auth
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
         with:
           project_id: 'reco-engine-adv'
           workload_identity_provider: 'projects/491258383512/locations/global/workloadIdentityPools/github/providers/github-provider'
           service_account: 'github-deployer@reco-engine-adv.iam.gserviceaccount.com'
-      - uses: google-github-actions/setup-gcloud@v3
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
       - name: Deploy API
+        env:
+          INDEX_RESOURCE_NAME: ${{ vars.INDEX_RESOURCE_NAME }}
+          INDEX_ENDPOINT: ${{ vars.INDEX_ENDPOINT }}
+          DEPLOYED_INDEX_ID: ${{ vars.DEPLOYED_INDEX_ID }}
         run: |
+          test -n "$INDEX_RESOURCE_NAME"
+          test -n "$INDEX_ENDPOINT"
+          test -n "$DEPLOYED_INDEX_ID"
           gcloud run deploy reco-api --source ./api --region europe-west3 \
             --service-account reco-api@reco-engine-adv.iam.gserviceaccount.com \
-            --allow-unauthenticated --quiet
+            --set-secrets=API_BEARER_TOKEN=reco-api-bearer:latest \
+            --set-env-vars="PROJECT=reco-engine-adv,REGION=europe-west3,INDEX_RESOURCE_NAME=$INDEX_RESOURCE_NAME,INDEX_ENDPOINT=$INDEX_ENDPOINT,DEPLOYED_INDEX_ID=$DEPLOYED_INDEX_ID" \
+            --min-instances=0 --max-instances=2 --concurrency=20 --timeout=30 \
+            --no-allow-unauthenticated --quiet

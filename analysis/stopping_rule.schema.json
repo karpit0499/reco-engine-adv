@@ -1,0 +1,311 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/karpit0499/reco-engine-adv/analysis/stopping_rule.schema.json",
+  "title": "Fixed-horizon A/B experiment predeclaration",
+  "description": "A machine-readable declaration that must be locked before outcome data are viewed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "experiment_id",
+    "synthetic_example",
+    "predeclaration",
+    "hypothesis",
+    "population",
+    "assignment",
+    "primary_metric",
+    "inference",
+    "sample_size",
+    "stopping_rule",
+    "decision_rule",
+    "guardrails"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "experiment_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "synthetic_example": {
+      "type": "boolean"
+    },
+    "predeclaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "declared_at",
+        "declared_by",
+        "outcomes_viewed_at_declaration",
+        "locked_fields"
+      ],
+      "properties": {
+        "declared_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "declared_by": {
+          "type": "string",
+          "minLength": 1
+        },
+        "outcomes_viewed_at_declaration": {
+          "const": false
+        },
+        "locked_fields": {
+          "type": "array",
+          "minItems": 7,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "hypothesis",
+              "population",
+              "assignment",
+              "primary_metric",
+              "inference",
+              "sample_size",
+              "stopping_rule",
+              "decision_rule",
+              "guardrails"
+            ]
+          },
+          "allOf": [
+            {
+              "contains": {
+                "const": "primary_metric"
+              }
+            },
+            {
+              "contains": {
+                "const": "sample_size"
+              }
+            },
+            {
+              "contains": {
+                "const": "stopping_rule"
+              }
+            },
+            {
+              "contains": {
+                "const": "decision_rule"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "hypothesis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["null", "alternative", "sidedness"],
+      "properties": {
+        "null": {
+          "type": "string",
+          "minLength": 1
+        },
+        "alternative": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sidedness": {
+          "const": "two_sided"
+        }
+      }
+    },
+    "population": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["eligibility", "randomization_unit"],
+      "properties": {
+        "eligibility": {
+          "type": "string",
+          "minLength": 1
+        },
+        "randomization_unit": {
+          "const": "user_id"
+        }
+      }
+    },
+    "assignment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["arms", "algorithm", "salt_id", "treatment_fraction"],
+      "properties": {
+        "arms": {
+          "const": ["control", "treatment"]
+        },
+        "algorithm": {
+          "const": "sha256_64bit_threshold_v1"
+        },
+        "salt_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "treatment_fraction": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "exclusiveMaximum": 1
+        }
+      }
+    },
+    "primary_metric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "numerator",
+        "denominator",
+        "aggregation",
+        "analysis_unit",
+        "missing_data_rule"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "numerator": {
+          "type": "string",
+          "minLength": 1
+        },
+        "denominator": {
+          "type": "string",
+          "minLength": 1
+        },
+        "aggregation": {
+          "const": "equal_weight_per_user"
+        },
+        "analysis_unit": {
+          "const": "user_id"
+        },
+        "missing_data_rule": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "inference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "alpha", "confidence_level", "multiplicity_policy"],
+      "properties": {
+        "method": {
+          "const": "welch_t_test"
+        },
+        "alpha": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "exclusiveMaximum": 1
+        },
+        "confidence_level": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "exclusiveMaximum": 1
+        },
+        "multiplicity_policy": {
+          "const": "one_primary_metric_no_multiplicity_adjustment"
+        }
+      }
+    },
+    "sample_size": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "planned_total_users",
+        "minimum_users_per_arm",
+        "minimum_detectable_absolute_effect",
+        "target_power",
+        "planning_assumptions"
+      ],
+      "properties": {
+        "planned_total_users": {
+          "type": "integer",
+          "minimum": 4
+        },
+        "minimum_users_per_arm": {
+          "type": "integer",
+          "minimum": 2
+        },
+        "minimum_detectable_absolute_effect": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "target_power": {
+          "type": "number",
+          "exclusiveMinimum": 0.5,
+          "exclusiveMaximum": 1
+        },
+        "planning_assumptions": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "stopping_rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "analysis_trigger",
+        "early_efficacy_stopping",
+        "early_futility_stopping",
+        "max_primary_analyses"
+      ],
+      "properties": {
+        "type": {
+          "const": "fixed_horizon"
+        },
+        "analysis_trigger": {
+          "const": "planned_total_users_reached"
+        },
+        "early_efficacy_stopping": {
+          "const": "none"
+        },
+        "early_futility_stopping": {
+          "const": "none"
+        },
+        "max_primary_analyses": {
+          "const": 1
+        }
+      }
+    },
+    "decision_rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reject_null_when", "effect_reporting", "srm_action"],
+      "properties": {
+        "reject_null_when": {
+          "const": "two_sided_p_value_below_alpha"
+        },
+        "effect_reporting": {
+          "const": "absolute_difference_with_confidence_interval"
+        },
+        "srm_action": {
+          "const": "invalidate_primary_decision_and_investigate"
+        }
+      }
+    },
+    "guardrails": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "failure_condition", "action"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "failure_condition": {
+            "type": "string",
+            "minLength": 1
+          },
+          "action": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}

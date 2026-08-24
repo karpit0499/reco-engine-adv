@@ -1,0 +1,409 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/karpit0499/reco-engine-adv/benchmarks/vector_search_runtime/result.schema.json",
+  "title": "Vertex Vector Search runtime benchmark result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "measurement_kind",
+    "status",
+    "failure",
+    "completed_at",
+    "recommendation_quality_evaluated",
+    "input",
+    "operator_attestations",
+    "plan",
+    "control_plane",
+    "workload",
+    "client_environment",
+    "latency_ms",
+    "ann_fidelity",
+    "privacy",
+    "samples"
+  ],
+  "properties": {
+    "schema_version": {"const": 2},
+    "measurement_kind": {"const": "ann_retrieval_fidelity_and_client_latency"},
+    "status": {"enum": ["passed", "failed"]},
+    "failure": {
+      "oneOf": [{"$ref": "#/$defs/failure"}, {"type": "null"}]
+    },
+    "completed_at": {"type": "string", "format": "date-time", "pattern": "Z$"},
+    "recommendation_quality_evaluated": {"const": false},
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_sha256",
+        "artifact_created_at",
+        "source",
+        "repository_commit",
+        "expected_active_pointer",
+        "manifest_contract"
+      ],
+      "properties": {
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "artifact_created_at": {"type": "string", "format": "date-time", "pattern": "Z$"},
+        "source": {"$ref": "#/$defs/source"},
+        "repository_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "expected_active_pointer": {"$ref": "#/$defs/activePointer"},
+        "manifest_contract": {"$ref": "#/$defs/manifestContract"}
+      }
+    },
+    "operator_attestations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_provenance", "client_region"],
+      "properties": {
+        "source_provenance": {"$ref": "#/$defs/attestation"},
+        "client_region": {"$ref": "#/$defs/attestation"}
+      }
+    },
+    "plan": {"$ref": "#/$defs/plan"},
+    "control_plane": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["before", "after", "unchanged"],
+      "properties": {
+        "before": {"$ref": "#/$defs/controlSnapshot"},
+        "after": {
+          "oneOf": [{"$ref": "#/$defs/controlSnapshot"}, {"type": "null"}]
+        },
+        "unchanged": {"type": ["boolean", "null"]}
+      }
+    },
+    "workload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "catalog_size",
+        "catalog_canonical_sha256",
+        "catalog_manifest_match",
+        "dimensions",
+        "distance_metric",
+        "top_k",
+        "warmups_requested",
+        "warmups_success",
+        "warmups_failure",
+        "queries_requested",
+        "queries_success",
+        "queries_failure"
+      ],
+      "properties": {
+        "catalog_size": {"type": "integer", "minimum": 100, "maximum": 100000},
+        "catalog_canonical_sha256": {"$ref": "#/$defs/sha256"},
+        "catalog_manifest_match": {"const": true},
+        "dimensions": {"type": "integer", "minimum": 1, "maximum": 2048},
+        "distance_metric": {"$ref": "#/$defs/distanceMetric"},
+        "top_k": {"type": "integer", "minimum": 1, "maximum": 100},
+        "warmups_requested": {"type": "integer", "minimum": 0, "maximum": 50},
+        "warmups_success": {"type": "integer", "minimum": 0, "maximum": 50},
+        "warmups_failure": {"type": "integer", "minimum": 0, "maximum": 50},
+        "queries_requested": {"type": "integer", "minimum": 20, "maximum": 500},
+        "queries_success": {"type": "integer", "minimum": 0, "maximum": 500},
+        "queries_failure": {"type": "integer", "minimum": 0, "maximum": 500}
+      }
+    },
+    "client_environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["os", "cpu", "python", "google_cloud_aiplatform_sdk"],
+      "properties": {
+        "os": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["system", "release", "version"],
+          "properties": {
+            "system": {"type": "string", "maxLength": 256},
+            "release": {"type": "string", "maxLength": 1024},
+            "version": {"type": "string", "maxLength": 4096}
+          }
+        },
+        "cpu": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["processor", "machine", "logical_count"],
+          "properties": {
+            "processor": {"type": "string", "maxLength": 1024},
+            "machine": {"type": "string", "maxLength": 256},
+            "logical_count": {"type": ["integer", "null"], "minimum": 1, "maximum": 65536}
+          }
+        },
+        "python": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+"},
+        "google_cloud_aiplatform_sdk": {"type": "string", "minLength": 1, "maxLength": 64}
+      }
+    },
+    "latency_ms": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "successful_queries_only", "p50", "p95"],
+      "properties": {
+        "scope": {"const": "client find_neighbors call wall time; exact scoring excluded"},
+        "successful_queries_only": {"const": true},
+        "p50": {"type": ["number", "null"], "minimum": 0},
+        "p95": {"type": ["number", "null"], "minimum": 0}
+      }
+    },
+    "ann_fidelity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["metric", "scope", "successful_queries_only", "mean_overlap_at_k"],
+      "properties": {
+        "metric": {"type": "string", "pattern": "^set_overlap@[1-9][0-9]{0,2}$"},
+        "scope": {"const": "ANN versus exact vector retrieval; not recommendation quality"},
+        "successful_queries_only": {"const": true},
+        "mean_overlap_at_k": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
+      }
+    },
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["query_identifiers", "query_embeddings", "returned_item_identifiers"],
+      "properties": {
+        "query_identifiers": {"const": "omitted"},
+        "query_embeddings": {"const": "omitted"},
+        "returned_item_identifiers": {"const": "omitted"}
+      }
+    },
+    "samples": {
+      "type": "array",
+      "minItems": 20,
+      "maxItems": 550,
+      "items": {"$ref": "#/$defs/sample"}
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "passed"}}},
+      "then": {
+        "properties": {
+          "failure": {"type": "null"},
+          "control_plane": {
+            "properties": {
+              "after": {"$ref": "#/$defs/controlSnapshot"},
+              "unchanged": {"const": true}
+            }
+          }
+        }
+      },
+      "else": {"properties": {"failure": {"$ref": "#/$defs/failure"}}}
+    }
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "generationId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"},
+    "gsUri": {"type": "string", "pattern": "^gs://[^/]+/.+[^/]$"},
+    "distanceMetric": {
+      "enum": ["DOT_PRODUCT_DISTANCE", "COSINE_DISTANCE", "SQUARED_L2_DISTANCE"]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "contains_synthetic_data", "description", "interaction_count", "provenance_verification"],
+      "properties": {
+        "kind": {"const": "production_interaction_embedding_export"},
+        "contains_synthetic_data": {"const": false},
+        "description": {"type": "string", "minLength": 1, "maxLength": 1024},
+        "interaction_count": {"type": "integer", "minimum": 1, "maximum": 1000000000000},
+        "provenance_verification": {"const": "operator_attested"}
+      }
+    },
+    "manifestIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["uri", "object_generation", "sha256"],
+      "properties": {
+        "uri": {"$ref": "#/$defs/gsUri"},
+        "object_generation": {"type": "integer", "minimum": 1},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "serving": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["index_resource", "index_endpoint", "deployed_index_id"],
+      "properties": {
+        "index_resource": {"type": "string", "pattern": "^projects/[^/]+/locations/[^/]+/indexes/[^/]+$"},
+        "index_endpoint": {"type": "string", "pattern": "^projects/[^/]+/locations/[^/]+/indexEndpoints/[^/]+$"},
+        "deployed_index_id": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]{0,127}$"}
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ops_image_uri", "source_revision"],
+      "properties": {
+        "ops_image_uri": {"type": "string", "pattern": "^[^\\s:@]+(?:/[^\\s:@]+)+@sha256:[0-9a-f]{64}$"},
+        "source_revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"}
+      }
+    },
+    "activePointer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["table", "generation_id", "epoch", "fence_epoch", "previous_generation_id", "manifest", "provenance", "retained_generation_ids", "champion_score", "serving", "promoted_at"],
+      "properties": {
+        "table": {"type": "string", "pattern": "^[a-z][a-z0-9-]{4,28}[a-z0-9]\\.reco\\.active_embedding_generation$"},
+        "generation_id": {"$ref": "#/$defs/generationId"},
+        "epoch": {"type": "integer", "minimum": 1},
+        "fence_epoch": {"type": "integer", "minimum": 1},
+        "previous_generation_id": {"oneOf": [{"$ref": "#/$defs/generationId"}, {"type": "null"}]},
+        "manifest": {"$ref": "#/$defs/manifestIdentity"},
+        "provenance": {"$ref": "#/$defs/provenance"},
+        "retained_generation_ids": {"type": "array", "minItems": 1, "maxItems": 20, "uniqueItems": true, "items": {"$ref": "#/$defs/generationId"}},
+        "champion_score": {"type": "number", "minimum": 0, "maximum": 1},
+        "serving": {"$ref": "#/$defs/serving"},
+        "promoted_at": {"type": "string", "format": "date-time", "pattern": "Z$"}
+      }
+    },
+    "manifestContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "dimensions", "items"],
+      "properties": {
+        "schema_version": {"const": 3},
+        "dimensions": {"type": "integer", "minimum": 1, "maximum": 2048},
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["count", "sha256", "canonical_uri", "canonical_object_generation"],
+          "properties": {
+            "count": {"type": "integer", "minimum": 100, "maximum": 100000},
+            "sha256": {"$ref": "#/$defs/sha256"},
+            "canonical_uri": {"$ref": "#/$defs/gsUri"},
+            "canonical_object_generation": {"type": "integer", "minimum": 1}
+          }
+        }
+      }
+    },
+    "attestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verification", "value"],
+      "properties": {
+        "verification": {"const": "operator_attested"},
+        "value": {"type": "string", "minLength": 1, "maxLength": 1024}
+      }
+    },
+    "plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dry_run_default", "planned_cloud_api_calls", "planned_exact_scalar_operations", "hard_caps", "required_confirmation_phrase"],
+      "properties": {
+        "dry_run_default": {"const": true},
+        "planned_cloud_api_calls": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["bigquery_active_pointer_queries", "gcs_manifest_metadata_reads", "gcs_generation_pinned_manifest_downloads", "vertex_index_metadata_reads", "vertex_endpoint_metadata_reads", "vertex_find_neighbors_calls", "total_potentially_billable_calls"],
+          "properties": {
+            "bigquery_active_pointer_queries": {"const": 2},
+            "gcs_manifest_metadata_reads": {"const": 2},
+            "gcs_generation_pinned_manifest_downloads": {"const": 2},
+            "vertex_index_metadata_reads": {"const": 2},
+            "vertex_endpoint_metadata_reads": {"const": 3},
+            "vertex_find_neighbors_calls": {"type": "integer", "minimum": 20, "maximum": 550},
+            "total_potentially_billable_calls": {"type": "integer", "minimum": 31, "maximum": 561}
+          }
+        },
+        "planned_exact_scalar_operations": {"type": "integer", "minimum": 1, "maximum": 500000000},
+        "hard_caps": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["catalog_items", "measured_queries", "warmups", "top_k", "exact_scalar_operations", "potentially_billable_calls"],
+          "properties": {
+            "catalog_items": {"const": 100000},
+            "measured_queries": {"const": 500},
+            "warmups": {"const": 50},
+            "top_k": {"const": 100},
+            "exact_scalar_operations": {"const": 500000000},
+            "potentially_billable_calls": {"const": 561}
+          }
+        },
+        "required_confirmation_phrase": {"type": "string", "pattern": "^EXECUTE [0-9]+ POTENTIALLY BILLED CLOUD API CALLS FOR [A-Za-z0-9][A-Za-z0-9._-]{0,63}@[1-9][0-9]*$"}
+      }
+    },
+    "manifestEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity", "schema_version", "generation_id", "dimensions", "items", "provenance"],
+      "properties": {
+        "identity": {"$ref": "#/$defs/manifestIdentity"},
+        "schema_version": {"const": 3},
+        "generation_id": {"$ref": "#/$defs/generationId"},
+        "dimensions": {"type": "integer", "minimum": 1, "maximum": 2048},
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["count", "sha256", "canonical_uri", "canonical_object_generation", "catalog_payload_match"],
+          "properties": {
+            "count": {"type": "integer", "minimum": 100, "maximum": 100000},
+            "sha256": {"$ref": "#/$defs/sha256"},
+            "canonical_uri": {"$ref": "#/$defs/gsUri"},
+            "canonical_object_generation": {"type": "integer", "minimum": 1},
+            "catalog_payload_match": {"const": true}
+          }
+        },
+        "provenance": {"$ref": "#/$defs/provenance"}
+      }
+    },
+    "vertexEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["index_resource", "index_endpoint", "deployed_index_id", "dimensions", "distance_metric", "index_update_method", "deployed_mapping_verified", "endpoint_region"],
+      "properties": {
+        "index_resource": {"type": "string", "pattern": "^projects/[^/]+/locations/[^/]+/indexes/[^/]+$"},
+        "index_endpoint": {"type": "string", "pattern": "^projects/[^/]+/locations/[^/]+/indexEndpoints/[^/]+$"},
+        "deployed_index_id": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]{0,127}$"},
+        "dimensions": {"type": "integer", "minimum": 1, "maximum": 2048},
+        "distance_metric": {"$ref": "#/$defs/distanceMetric"},
+        "index_update_method": {"const": "STREAM_UPDATE"},
+        "deployed_mapping_verified": {"const": true},
+        "endpoint_region": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"}
+      }
+    },
+    "controlSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observed_at", "active_pointer", "active_pointer_sha256", "promotion_manifest", "vertex"],
+      "properties": {
+        "observed_at": {"type": "string", "format": "date-time", "pattern": "Z$"},
+        "active_pointer": {"$ref": "#/$defs/activePointer"},
+        "active_pointer_sha256": {"$ref": "#/$defs/sha256"},
+        "promotion_manifest": {"$ref": "#/$defs/manifestEvidence"},
+        "vertex": {"$ref": "#/$defs/vertexEvidence"}
+      }
+    },
+    "failure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stage", "type"],
+      "properties": {
+        "stage": {"enum": ["querying", "control_postflight"]},
+        "type": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]{0,127}$"}
+      }
+    },
+    "sampleError": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stage", "type"],
+      "properties": {
+        "stage": {"const": "querying"},
+        "type": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]{0,127}$"}
+      }
+    },
+    "sample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["phase", "sequence", "success", "latency_ms", "exact_ann_overlap_count", "exact_ann_overlap_at_k", "error"],
+      "properties": {
+        "phase": {"enum": ["warmup", "measured"]},
+        "sequence": {"type": "integer", "minimum": 0, "maximum": 499},
+        "success": {"type": "boolean"},
+        "latency_ms": {"type": "number", "minimum": 0},
+        "exact_ann_overlap_count": {"type": ["integer", "null"], "minimum": 0, "maximum": 100},
+        "exact_ann_overlap_at_k": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+        "error": {"oneOf": [{"$ref": "#/$defs/sampleError"}, {"type": "null"}]}
+      }
+    }
+  }
+}

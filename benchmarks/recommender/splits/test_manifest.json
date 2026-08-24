@@ -1,0 +1,31 @@
+{
+  "archive_sha256": "a6898adb50b9ca05aa231689da44c217cb524e7ebd39d264c56e2832f2c54e20",
+  "artifact_filename": "test.npz",
+  "artifact_path": "data/prepared/test.npz",
+  "artifact_sha256": "a1ab951f2bdce9ce33dc37ad561fa2faa93e5341e2dece6892bd54ca6ecb477b",
+  "contains_other_stage_targets": false,
+  "dataset": {
+    "catalog_items": 3883,
+    "cold_catalog_items": 395,
+    "cold_targets": 1,
+    "cold_users": 137,
+    "evaluation_users": 961,
+    "fit_positive_interactions": 506137,
+    "seen_rating_events": 875180,
+    "stage": "test",
+    "target_timestamp_max": 1046367898,
+    "target_timestamp_min": 977083270,
+    "training_users": 6040,
+    "warm_catalog_items": 3488,
+    "warm_targets": 960,
+    "warm_users": 824
+  },
+  "equal_timestamp_blocks_split": false,
+  "fit_timestamp_exclusive_upper_bound": 977083270,
+  "protocol_sha256": "d8d59f14ed7e2427791c705866aae1b807d5f7eed7840b4ee2e4a574c3ee0932",
+  "raw_archive_redistributed": false,
+  "schema_version": 2,
+  "stage": "test",
+  "target_timestamp_exclusive_upper_bound": null,
+  "target_timestamp_inclusive_lower_bound": 977083270
+}

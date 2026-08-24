@@ -1,0 +1,31 @@
+{
+  "archive_sha256": "a6898adb50b9ca05aa231689da44c217cb524e7ebd39d264c56e2832f2c54e20",
+  "artifact_filename": "validation.npz",
+  "artifact_path": "data/prepared/validation.npz",
+  "artifact_sha256": "a64c1d4c39d55606ce8983dfe045d91a510a695463b99f1c1014533adb9797bd",
+  "contains_other_stage_targets": false,
+  "dataset": {
+    "catalog_items": 3883,
+    "cold_catalog_items": 430,
+    "cold_targets": 0,
+    "cold_users": 549,
+    "evaluation_users": 905,
+    "fit_positive_interactions": 436093,
+    "seen_rating_events": 750151,
+    "stage": "validation",
+    "target_timestamp_max": 977082955,
+    "target_timestamp_min": 975220939,
+    "training_users": 6040,
+    "warm_catalog_items": 3453,
+    "warm_targets": 905,
+    "warm_users": 356
+  },
+  "equal_timestamp_blocks_split": false,
+  "fit_timestamp_exclusive_upper_bound": 975220939,
+  "protocol_sha256": "d8d59f14ed7e2427791c705866aae1b807d5f7eed7840b4ee2e4a574c3ee0932",
+  "raw_archive_redistributed": false,
+  "schema_version": 2,
+  "stage": "validation",
+  "target_timestamp_exclusive_upper_bound": 977083270,
+  "target_timestamp_inclusive_lower_bound": 975220939
+}

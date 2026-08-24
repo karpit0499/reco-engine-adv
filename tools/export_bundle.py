@@ -1,21 +1,46 @@
+import atexit
 import json
 import math
 import os
 import pathlib
+import shutil
 import subprocess
 import sys
 import tempfile
+import uuid
 
 import numpy as np
 import requests
 import xgboost as xgb
 from google.cloud import bigquery, storage
 
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "training"))
+from generation_contract import (  # noqa: E402
+    ACTIVE_GENERATION_TABLE,
+    ServingBinding,
+    item_blob_name,
+    manifest_blob_name,
+    manifest_uri,
+    parse_item_payload,
+    parse_user_payload,
+    sha256_bytes,
+    user_blob_name,
+    validate_binding,
+    validate_generation_id,
+    validate_manifest,
+    validate_ops_image_uri,
+    validate_sha256,
+    validate_source_revision,
+)
+
 PROJECT = os.environ.get("PROJECT", "reco-engine-adv")
 REGION = "europe-west3"
 BUCKET = f"{PROJECT}-artifacts"
 OUT = pathlib.Path(__file__).resolve().parent.parent / "demo" / "data"
 OUT.mkdir(parents=True, exist_ok=True)
+BUNDLES = OUT / "bundles"
+BUNDLES.mkdir(parents=True, exist_ok=True)
 
 bq = bigquery.Client(project=PROJECT)
 gcs = storage.Client(project=PROJECT)
@@ -48,28 +73,144 @@ print(f"  {len(item_ids)} items, {len(cats)} categories")
 print("· item vectors")
 
 
-def read_item_vectors(blob_name):
-    blob = gcs.bucket(BUCKET).blob(blob_name)
-    if not blob.exists():
+def active_export_fence():
+    rows = q(f"""SELECT generation_id, epoch, previous_generation_id, manifest_uri,
+                        manifest_object_generation, manifest_sha256,
+                        ops_image_uri, source_revision, retained_generation_ids,
+                        champion_score, promoted_at,
+                        index_name, index_endpoint, deployed_index_id
+                 FROM `{PROJECT}.reco.{ACTIVE_GENERATION_TABLE}`
+                 WHERE singleton = TRUE""")
+    if len(rows) != 1:
+        raise RuntimeError("export requires exactly one active generation")
+    return dict(rows[0])
+
+
+def conditional_download(blob, expected_generation=None):
+    blob.reload()
+    generation = int(blob.generation)
+    if expected_generation is not None and generation != expected_generation:
+        raise RuntimeError("immutable export input changed object generation")
+    return blob.download_as_bytes(if_generation_match=generation)
+
+
+export_fence = active_export_fence()
+active_generation = validate_generation_id(str(export_fence["generation_id"]))
+active_epoch = int(export_fence["epoch"])
+if export_fence["manifest_uri"] != manifest_uri(BUCKET, active_generation):
+    raise RuntimeError("active pointer does not name its exact generation manifest")
+binding = validate_binding(
+    export_fence["index_name"],
+    export_fence["index_endpoint"],
+    export_fence["deployed_index_id"],
+)
+active_receipt = {
+    "manifest_object_generation": int(export_fence["manifest_object_generation"]),
+    "manifest_sha256": validate_sha256(export_fence["manifest_sha256"]),
+    "ops_image_uri": validate_ops_image_uri(export_fence["ops_image_uri"]),
+    "source_revision": validate_source_revision(export_fence["source_revision"]),
+}
+bundle_id = (
+    f"{active_generation}-{active_epoch}-{active_receipt['manifest_sha256'][:12]}-"
+    f"{uuid.uuid4().hex[:8]}"
+)
+STAGING = pathlib.Path(tempfile.mkdtemp(prefix=f".{bundle_id}-", dir=BUNDLES))
+atexit.register(shutil.rmtree, STAGING, ignore_errors=True)
+
+
+def write_json(path: pathlib.Path, payload, *, default=None) -> None:
+    with path.open("w", encoding="utf-8") as handle:
+        json.dump(payload, handle, default=default, separators=(",", ":"))
+        handle.flush()
+        os.fsync(handle.fileno())
+
+
+def retired_receipt(generation_id: str):
+    """Return the exact most-recent retirement receipt, never an unfenced URI."""
+    generation_id = validate_generation_id(generation_id)
+    try:
+        rows = q(f"""SELECT manifest_object_generation, manifest_sha256,
+                            ops_image_uri, source_revision
+                     FROM `{PROJECT}.reco.embedding_generation_retirements`
+                     WHERE generation_id = '{generation_id}'
+                     ORDER BY retired_epoch DESC LIMIT 1""")
+    except Exception:
         return None
-    by_id = {}
-    for line in blob.download_as_text().splitlines():
-        if line.strip():
-            r = json.loads(line)
-            by_id[r["id"]] = r["embedding"]
-    return by_id
+    if len(rows) != 1:
+        return None
+    row = rows[0]
+    return {
+        "manifest_object_generation": int(row["manifest_object_generation"]),
+        "manifest_sha256": validate_sha256(row["manifest_sha256"]),
+        "ops_image_uri": validate_ops_image_uri(row["ops_image_uri"]),
+        "source_revision": validate_source_revision(row["source_revision"]),
+    }
 
 
-cur = read_item_vectors("embeddings/items.json")
-if not cur:
-    sys.exit(f"gs://{BUCKET}/embeddings/items.json is empty — run training/train.py (Phase 7)")
-DIM = len(next(iter(cur.values())))
-print(f"  dim = {DIM}")
+def load_generation(generation_id, receipt):
+    if not receipt:
+        raise RuntimeError("generation export requires an immutable manifest receipt")
+    manifest_payload = conditional_download(
+        gcs.bucket(BUCKET).blob(manifest_blob_name(generation_id)),
+        receipt["manifest_object_generation"],
+    )
+    if sha256_bytes(manifest_payload) != receipt["manifest_sha256"]:
+        raise RuntimeError("generation manifest bytes differ from the active receipt")
+    manifest = validate_manifest(
+        json.loads(manifest_payload),
+        expected_generation_id=generation_id,
+        canonical_bucket=BUCKET,
+        regional_bucket=f"{PROJECT}-vectors",
+        expected_binding=binding,
+        expected_ops_image_uri=receipt["ops_image_uri"],
+        expected_source_revision=receipt["source_revision"],
+    )
+    item_payload = conditional_download(
+        gcs.bucket(BUCKET).blob(item_blob_name(generation_id)),
+        manifest["items"]["canonical_object_generation"],
+    )
+    user_payload = conditional_download(
+        gcs.bucket(BUCKET).blob(user_blob_name(generation_id)),
+        manifest["users"]["object_generation"],
+    )
+    if sha256_bytes(item_payload) != manifest["items"]["sha256"]:
+        raise RuntimeError("active item artifact failed its manifest digest")
+    if sha256_bytes(user_payload) != manifest["users"]["sha256"]:
+        raise RuntimeError("active user artifact failed its manifest digest")
+    return (
+        manifest,
+        {row["id"]: row["embedding"] for row in parse_item_payload(
+            item_payload, dimensions=manifest["dimensions"]
+        )},
+        {row["user_id"]: row["embedding"] for row in parse_user_payload(
+            user_payload, dimensions=manifest["dimensions"]
+        )},
+    )
 
-# Older runs only exist if you patched train.py to archive them (see Phase 19, Step 19.1).
-archive = sorted(b.name for b in gcs.list_blobs(BUCKET, prefix="archive/items_"))
-prev = read_item_vectors(archive[-1]) if archive else None
-print(f"  archived runs: {len(archive)}" + (f" (using {archive[-1]})" if archive else " — retrain demo will be disabled"))
+
+current_manifest, cur, U_cur = load_generation(active_generation, active_receipt)
+DIM = current_manifest["dimensions"]
+print(f"  active generation = {active_generation}@{active_epoch}, dim = {DIM}")
+previous_generation = export_fence.get("previous_generation_id")
+if previous_generation:
+    previous_receipt = retired_receipt(str(previous_generation))
+    if previous_receipt:
+        previous_manifest, prev, U_prev = load_generation(
+            str(previous_generation), previous_receipt
+        )
+        if previous_manifest["dimensions"] != DIM:
+            raise RuntimeError("active and previous generations use different dimensions")
+    else:
+        print("  ! previous generation has no exact retirement receipt; comparison disabled")
+        previous_generation = None
+        prev = U_prev = None
+else:
+    prev = U_prev = None
+print(
+    f"  previous generation = {previous_generation}"
+    if previous_generation
+    else "  no previous retained generation — retrain demo will be disabled"
+)
 
 # ⚠️ item_ids came from item_features_latest = ALL 500 catalog items. `cur` came from
 # train.py, whose item vocabulary is built from items that were actually INTERACTED with.
@@ -90,25 +231,8 @@ I1 = np.array([cur[i] for i in item_ids], dtype=np.float32)
 I2 = (np.array([prev[i] for i in item_ids], dtype=np.float32)
       if prev and all(i in prev for i in item_ids) else None)
 
-# ── 3. User vectors: two most recent trained_at snapshots (append-only pays off) ──
+# ── 3. User vectors from the same immutable active/previous manifests ──
 print("· user vectors + features + ground truth")
-runs = [r["trained_at"] for r in q(f"""
-  SELECT DISTINCT trained_at FROM `{PROJECT}.reco.user_embeddings`
-  ORDER BY trained_at DESC LIMIT 2
-""")]
-if not runs:
-    sys.exit("reco.user_embeddings is empty — run training/train.py (Phase 7)")
-
-
-def user_run(ts):
-    return {r["user_id"]: list(r["embedding"]) for r in q(f"""
-      SELECT user_id, embedding FROM `{PROJECT}.reco.user_embeddings`
-      WHERE trained_at = TIMESTAMP('{ts.isoformat()}')
-    """)}
-
-
-U_cur = user_run(runs[0])
-U_prev = user_run(runs[1]) if len(runs) > 1 else None
 
 feats = q(f"""
   SELECT uf.user_id, uf.events_7d, uf.purchases_30d, uf.distinct_items_7d, uf.top_category,
@@ -126,11 +250,7 @@ U2 = np.array([U_prev[u] for u in user_ids], dtype=np.float32) if (
     U_prev and all(u in U_prev for u in user_ids)) else None
 
 if (I2 is None) != (U2 is None):
-    # The asymmetry is worth a beat: user vectors are versioned for free because
-    # reco.user_embeddings is APPEND-ONLY, while items.json in GCS is overwritten on every
-    # run. Same lesson, two storage layers. Archive the blob (Phase 19) and it goes away.
-    print("  ! only one half of a second run is available — Lab retrain stays disabled")
-    I2 = U2 = None
+    raise RuntimeError("previous item/user generation is not a matched immutable pair")
 
 item_payload = {
     "dim": DIM, "categories": cats, "ids": item_ids,
@@ -141,7 +261,6 @@ item_payload = {
 }
 if I2 is not None:
     item_payload |= {"emb_v2": flat(I2), "xy_v2": flat(project2(I2))}
-json.dump(item_payload, open(OUT / "items.json", "w"))
 
 user_payload = {
     "ids": user_ids,
@@ -156,7 +275,13 @@ user_payload = {
 }
 if U2 is not None:
     user_payload["emb_v2"] = flat(U2)
-json.dump(user_payload, open(OUT / "users.json", "w"))
+
+# Re-read the pointer fence after every immutable generation input is loaded.
+# Temporary writes are private to this export and cannot become browser-visible.
+if active_export_fence() != export_fence:
+    raise RuntimeError("active generation changed during bundle export; retry")
+write_json(STAGING / "items.json", item_payload)
+write_json(STAGING / "users.json", user_payload)
 
 # ── 4. The ranker ────────────────────────────────────────────────────────────
 # BQML's BOOSTED_TREE_CLASSIFIER *is* XGBoost, so it exports as an XGBoost booster.
@@ -241,21 +366,55 @@ print(f"  max |browser − ML.PREDICT| = {worst:.2e}")
 if worst > 1e-4:
     sys.exit("ranker export does NOT reproduce BQML. Do not ship it.")
 
-# Ship exactly what the browser needs to reproduce this (label-encode + per-group softmax).
-OUT = pathlib.Path("demo/data"); OUT.mkdir(parents=True, exist_ok=True)
-json.dump({"features": FEATS, "categorical": CAT, "cat_index": cat_idx, "vocab": vocab,
-           "trees": trees, "tree_info": tree_info, "n_groups": n_groups, "pos_group": pos_group},
-          open(OUT / "ranker.json", "w"))
-print(f"  ✓ wrote demo/data/ranker.json — {len(trees)} trees, {n_groups} class groups, residual {worst:.1e}")
+# Ship exactly what the browser needs to reproduce this (label-index + per-group softmax).
+# This is intentionally a different, explicit schema path from mock_bundle.py's one-hot binary
+# classifier. Optional-field inference made the browser accept both while scoring one of them
+# with the other's objective.
+write_json(STAGING / "ranker.json", {
+    "format": "reco-ranker",
+    "schema_version": 1,
+    "features": FEATS,
+    "encoding": {
+        "type": "label_index",
+        "source_feature": "category",
+        "feature": CAT,
+        "feature_index": cat_idx,
+        "vocabulary": vocab,
+        "unknown": "missing",
+    },
+    "objective": {
+        "type": "multi:softprob",
+        "groups": n_groups,
+        "positive_group": pos_group,
+        "tree_groups": tree_info,
+    },
+    "trees": trees,
+})
+print(f"  ✓ staged ranker.json — {len(trees)} trees, {n_groups} class groups, residual {worst:.1e}")
 print("· golden set from the live API")
 api = subprocess.run(["gcloud", "run", "services", "describe", "reco-api",
                       "--region", REGION, "--format=value(status.url)"],
                      capture_output=True, text=True).stdout.strip()
 golden_api = []
-if api:
+api_token = os.environ.get("API_BEARER_TOKEN")
+if api and api_token:
+    headers = {"Authorization": f"Bearer {api_token}"}
+    identity = subprocess.run(
+        ["gcloud", "auth", "print-identity-token"],
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    if identity:
+        headers["X-Serverless-Authorization"] = f"Bearer {identity}"
     for u in user_ids[:25]:
         try:
-            r = requests.post(f"{api}/recommend", json={"user_id": u}, timeout=30)
+            r = requests.post(
+                f"{api}/recommend",
+                json={"user_id": u, "request_id": str(uuid.uuid4())},
+                headers=headers,
+                timeout=30,
+            )
+            r.raise_for_status()
             body = r.json()
             if body.get("served_by") == "personalized":
                 golden_api.append({"user_id": u, "items": body["items"]})
@@ -263,12 +422,13 @@ if api:
             print("   !", u, repr(e))
     print(f"  {len(golden_api)} personalised responses recorded")
 else:
-    print("  ! reco-api not found — the Fidelity panel will say so, which is the honest outcome")
+    reason = "reco-api not found" if not api else "API_BEARER_TOKEN not set"
+    print(f"  ! {reason} — no live API golden rows will be exported")
 # ranker golden — 20 rows the browser must reproduce, with BQML's own prob alongside for the fidelity panel
 golden_ranker = [{"row": {f: (str(dict(r)[f]) if f == CAT else float(dict(r)[f])) for f in FEATS},
                   "browser": score(encode(dict(r))), "ml_predict": float(r["prob"])}
                  for r in gold[:20]]
-json.dump({"api": golden_api, "ranker": golden_ranker}, open(OUT / "golden.json", "w"))
+write_json(STAGING / "golden.json", {"api": golden_api, "ranker": golden_ranker})
 
 # ── 6. The experiment ────────────────────────────────────────────────────────
 print("· experiment")
@@ -292,12 +452,56 @@ try:
 except Exception:
     exp["model_health"] = []      # Phase 14 not run yet — not fatal
 
-# Write once to get a size, then rewrite with the size in it — experiment.json can't
-# measure a directory it is itself part of without doing this twice. It's ~2 KB; who cares.
-json.dump(exp, open(OUT / "experiment.json", "w"), default=str)
-kb = sum(p.stat().st_size for p in OUT.glob("*.json")) // 1024
+# Write once to get a size, then rewrite with the size in it. Both writes remain
+# in the private staging directory until the active receipt is fenced again.
+write_json(STAGING / "experiment.json", exp, default=str)
+kb = sum(p.stat().st_size for p in STAGING.glob("*.json")) // 1024
 exp["bundle_kb"] = kb
-json.dump(exp, open(OUT / "experiment.json", "w"), default=str)
+write_json(STAGING / "experiment.json", exp, default=str)
 
-print(f"\n✅ bundle written to {OUT} — {kb} KB, {len(list(OUT.glob('*.json')))} files")
+# No generated file becomes visible before all cloud reads finish and the exact
+# active generation, manifest object generation/hash, provenance, score, and
+# Vertex binding are rechecked. Re-reading the immutable manifest also catches
+# a pointer row that somehow retained its fields while object content drifted.
+if active_export_fence() != export_fence:
+    raise RuntimeError("active generation changed before atomic bundle publication")
+load_generation(active_generation, active_receipt)
+if active_export_fence() != export_fence:
+    raise RuntimeError("active generation changed during final receipt verification")
+
+for directory in (STAGING, BUNDLES):
+    descriptor = os.open(directory, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+FINAL_BUNDLE = BUNDLES / bundle_id
+if FINAL_BUNDLE.exists():
+    raise RuntimeError(f"refusing to replace existing versioned bundle {FINAL_BUNDLE}")
+os.replace(STAGING, FINAL_BUNDLE)
+bundle_descriptor = os.open(BUNDLES, os.O_RDONLY)
+try:
+    os.fsync(bundle_descriptor)
+finally:
+    os.close(bundle_descriptor)
+
+pointer = {
+    "schema_version": 1,
+    "bundle": f"bundles/{bundle_id}",
+    "active_generation": active_generation,
+    "active_epoch": active_epoch,
+    "manifest_object_generation": active_receipt["manifest_object_generation"],
+    "manifest_sha256": active_receipt["manifest_sha256"],
+}
+pointer_tmp = OUT / f".current-{uuid.uuid4().hex}.json"
+write_json(pointer_tmp, pointer)
+os.replace(pointer_tmp, OUT / "current.json")
+out_descriptor = os.open(OUT, os.O_RDONLY)
+try:
+    os.fsync(out_descriptor)
+finally:
+    os.close(out_descriptor)
+
+print(f"\n✅ atomic bundle published at {FINAL_BUNDLE} — {kb} KB, {len(list(FINAL_BUNDLE.glob('*.json')))} files")
 print("   Now go and turn everything off. The demo will still be there.")

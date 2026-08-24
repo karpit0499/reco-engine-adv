@@ -1,0 +1,559 @@
+{
+  "aa_and_coverage": {
+    "aa_false_positive_rate": {
+      "acceptance_band": {
+        "confidence": 0.999,
+        "maximum_successes": 162,
+        "method": "central exact binomial acceptance band",
+        "minimum_successes": 91,
+        "rate_interval": [
+          0.0364,
+          0.0648
+        ],
+        "target_rate": 0.05
+      },
+      "design_target": 0.05,
+      "estimate": 0.052,
+      "monte_carlo_95_ci": [
+        0.043963593540136035,
+        0.06141107301122104
+      ],
+      "monte_carlo_standard_error": 0.004440540507640933,
+      "passes_acceptance_band": true,
+      "repetitions": 2500,
+      "successes": 130
+    },
+    "passes": true,
+    "planted_effect_ci_coverage": {
+      "acceptance_band": {
+        "confidence": 0.999,
+        "maximum_successes": 2409,
+        "method": "central exact binomial acceptance band",
+        "minimum_successes": 2338,
+        "rate_interval": [
+          0.9352,
+          0.9636
+        ],
+        "target_rate": 0.95
+      },
+      "design_target": 0.95,
+      "estimate": 0.9512,
+      "mean_estimated_effect": 0.02021104759145952,
+      "monte_carlo_95_ci": [
+        0.9420404220478024,
+        0.9589750923540451
+      ],
+      "monte_carlo_standard_error": 0.004308993385931334,
+      "passes_acceptance_band": true,
+      "planted_absolute_effect": 0.02,
+      "repetitions": 2500,
+      "simulation_bias": 0.00021104759145951918,
+      "successes": 2378
+    }
+  },
+  "claim_scope": {
+    "business_impact_estimate": false,
+    "purpose": "validation of A/B statistical machinery",
+    "synthetic": true,
+    "warning": "All observations and planted lifts in this report are synthetic. They are not evidence of product, revenue, or business impact."
+  },
+  "design": {
+    "inference": "two-sided Welch t-test",
+    "primary_analysis_unit": "user_id",
+    "primary_outcome": "equal-weight per-user click-through rate",
+    "randomization_unit": "user_id",
+    "repeated_impressions_clustered_within_user": true
+  },
+  "monte_carlo_policy": {
+    "acceptance_confidence": 0.999,
+    "calibration_acceptance": "central exact binomial band under the predeclared design target",
+    "repetitions": 2500,
+    "reported_uncertainty": "Wilson 95% interval for simulated rates"
+  },
+  "overall_pass": true,
+  "power_curve": {
+    "declared_mde_check": {
+      "criterion": "lower bound of Monte Carlo 95% CI is at least target power",
+      "estimated_power": 0.95,
+      "minimum_detectable_effect": 0.03,
+      "monte_carlo_95_ci": [
+        0.940744997144275,
+        0.9578741994001208
+      ],
+      "passes": true,
+      "target_power": 0.8
+    },
+    "monotonic_with_monte_carlo_uncertainty": true,
+    "monotonicity_checks": [
+      {
+        "from_effect": 0.0,
+        "maximum_accepted_monte_carlo_reversal": 0.031776961158672956,
+        "observed_power_difference": 0.184,
+        "passes": true,
+        "to_effect": 0.01
+      },
+      {
+        "from_effect": 0.01,
+        "maximum_accepted_monte_carlo_reversal": 0.04204410759417767,
+        "observed_power_difference": 0.436,
+        "passes": true,
+        "to_effect": 0.02
+      },
+      {
+        "from_effect": 0.02,
+        "maximum_accepted_monte_carlo_reversal": 0.03449873893287121,
+        "observed_power_difference": 0.27959999999999996,
+        "passes": true,
+        "to_effect": 0.03
+      },
+      {
+        "from_effect": 0.03,
+        "maximum_accepted_monte_carlo_reversal": 0.015389877418796223,
+        "observed_power_difference": 0.045600000000000085,
+        "passes": true,
+        "to_effect": 0.04
+      }
+    ],
+    "passes": true,
+    "points": [
+      {
+        "estimated_power": 0.0504,
+        "mean_estimated_effect": -0.00014697230428520629,
+        "monte_carlo_95_ci": [
+          0.04249306648917964,
+          0.059686509585575157
+        ],
+        "null_calibration": {
+          "acceptance_band": {
+            "confidence": 0.999,
+            "maximum_successes": 162,
+            "method": "central exact binomial acceptance band",
+            "minimum_successes": 91,
+            "rate_interval": [
+              0.0364,
+              0.0648
+            ],
+            "target_rate": 0.05
+          },
+          "design_target": 0.05,
+          "estimate": 0.0504,
+          "monte_carlo_95_ci": [
+            0.04249306648917964,
+            0.059686509585575157
+          ],
+          "monte_carlo_standard_error": 0.004375378383637237,
+          "passes_acceptance_band": true,
+          "repetitions": 2500,
+          "successes": 126
+        },
+        "planted_absolute_effect": 0.0,
+        "rejections": 126,
+        "repetitions": 2500
+      },
+      {
+        "estimated_power": 0.2344,
+        "mean_estimated_effect": 0.009974682066175139,
+        "monte_carlo_95_ci": [
+          0.21820950554900984,
+          0.25140547533500895
+        ],
+        "planted_absolute_effect": 0.01,
+        "rejections": 586,
+        "repetitions": 2500
+      },
+      {
+        "estimated_power": 0.6704,
+        "mean_estimated_effect": 0.020024412196214706,
+        "monte_carlo_95_ci": [
+          0.6517245289741121,
+          0.6885526067840323
+        ],
+        "planted_absolute_effect": 0.02,
+        "rejections": 1676,
+        "repetitions": 2500
+      },
+      {
+        "estimated_power": 0.95,
+        "mean_estimated_effect": 0.030267712068410686,
+        "monte_carlo_95_ci": [
+          0.940744997144275,
+          0.9578741994001208
+        ],
+        "planted_absolute_effect": 0.03,
+        "rejections": 2375,
+        "repetitions": 2500
+      },
+      {
+        "estimated_power": 0.9956,
+        "mean_estimated_effect": 0.04006346375495718,
+        "monte_carlo_95_ci": [
+          0.9921379634365588,
+          0.9975413116910026
+        ],
+        "planted_absolute_effect": 0.04,
+        "rejections": 2489,
+        "repetitions": 2500
+      }
+    ]
+  },
+  "report_version": "1.0.0",
+  "reproducibility": {
+    "configuration": {
+      "alpha": 0.05,
+      "assignment_salt": "reco-engine-adv/synthetic-validation/v1",
+      "assignment_validation_users": 20000,
+      "baseline_click_probability": 0.1,
+      "confidence_level": 0.95,
+      "declared_minimum_detectable_effect": 0.03,
+      "mean_impressions_per_user": 8.0,
+      "minimum_impressions_per_user": 3,
+      "monte_carlo_acceptance_confidence": 0.999,
+      "planted_effect": 0.02,
+      "power_effects": [
+        0.0,
+        0.01,
+        0.02,
+        0.03,
+        0.04
+      ],
+      "repetitions": 2500,
+      "seed": 20260820,
+      "srm_alpha": 0.001,
+      "srm_detection_target": 0.99,
+      "srm_planted_treatment_fraction": 0.55,
+      "srm_total_users": 10000,
+      "target_power": 0.8,
+      "user_heterogeneity_half_width": 0.04,
+      "users_per_arm": 400
+    },
+    "deterministic": true,
+    "packages": {
+      "jsonschema": "4.26.0",
+      "numpy": "1.26.4",
+      "scipy": "1.17.1"
+    },
+    "seed": 20260820,
+    "seed_derivation": "SHA-256(base seed, NUL delimiter, validation namespace)"
+  },
+  "sample_ratio_mismatch": {
+    "alpha": 0.001,
+    "balanced_example": {
+      "alpha": 0.001,
+      "arms": [
+        "control",
+        "treatment"
+      ],
+      "degrees_of_freedom": 1,
+      "expected": {
+        "control": 5000.0,
+        "treatment": 5000.0
+      },
+      "method": "Pearson chi-square goodness-of-fit",
+      "mismatch_detected": false,
+      "observed": {
+        "control": 5000,
+        "treatment": 5000
+      },
+      "p_value": 1.0,
+      "statistic": 0.0
+    },
+    "expected_allocation": {
+      "control": 0.5,
+      "treatment": 0.5
+    },
+    "null_false_alarm_rate": {
+      "acceptance_band": {
+        "confidence": 0.999,
+        "maximum_successes": 9,
+        "method": "central exact binomial acceptance band",
+        "minimum_successes": 0,
+        "rate_interval": [
+          0.0,
+          0.0036
+        ],
+        "target_rate": 0.001
+      },
+      "design_target": 0.001,
+      "estimate": 0.0004,
+      "monte_carlo_95_ci": [
+        7.061331195866894e-05,
+        0.0022623853689743663
+      ],
+      "monte_carlo_standard_error": 0.0003999199919983996,
+      "passes_acceptance_band": true,
+      "repetitions": 2500,
+      "successes": 1
+    },
+    "passes": true,
+    "planted_mismatch_detection": {
+      "criterion": "lower bound of Monte Carlo 95% CI is at least target",
+      "detections": 2500,
+      "estimated_detection_probability": 1.0,
+      "monte_carlo_95_ci": [
+        0.9984657739382173,
+        0.9999999999999999
+      ],
+      "passes": true,
+      "planted_treatment_fraction": 0.55,
+      "repetitions": 2500,
+      "target": 0.99
+    },
+    "planted_mismatch_example": {
+      "alpha": 0.001,
+      "arms": [
+        "control",
+        "treatment"
+      ],
+      "degrees_of_freedom": 1,
+      "expected": {
+        "control": 5000.0,
+        "treatment": 5000.0
+      },
+      "method": "Pearson chi-square goodness-of-fit",
+      "mismatch_detected": true,
+      "observed": {
+        "control": 4500,
+        "treatment": 5500
+      },
+      "p_value": 1.5239706048320995e-23,
+      "statistic": 100.0
+    }
+  },
+  "stable_assignment": {
+    "one_variant_per_user": true,
+    "passes": true,
+    "production_api_rule": {
+      "algorithm": "parity of the complete SHA-256(user_id UTF-8) digest",
+      "allocation_srm_check": {
+        "alpha": 0.001,
+        "arms": [
+          "control",
+          "treatment"
+        ],
+        "degrees_of_freedom": 1,
+        "expected": {
+          "control": 10000.0,
+          "treatment": 10000.0
+        },
+        "method": "Pearson chi-square goodness-of-fit",
+        "mismatch_detected": false,
+        "observed": {
+          "control": 9971,
+          "treatment": 10029
+        },
+        "p_value": 0.6817165041390476,
+        "statistic": 0.1682
+      },
+      "golden_vectors": [
+        {
+          "sha256_hex": "fc93622438491c470a81202556773c163479e5943637fd5885dbe50c6747cb05",
+          "user_id": "synthetic-user-000000",
+          "variant": "treatment"
+        },
+        {
+          "sha256_hex": "295b7b40caf2670bcf71d6eeb93dae8a03f03457e4741e74fb6a5c003f6db6b4",
+          "user_id": "synthetic-user-000001",
+          "variant": "control"
+        },
+        {
+          "sha256_hex": "5bf2f86477465faf2f920adb27731765100064c8f55601189e1e6778378f51ba",
+          "user_id": "synthetic-user-000002",
+          "variant": "control"
+        },
+        {
+          "sha256_hex": "b4a2d8533a10b8a51d2e96bccaa8583d731d453b4970970e317668b333e44865",
+          "user_id": "synthetic-user-000003",
+          "variant": "treatment"
+        },
+        {
+          "sha256_hex": "827e030a3735caaf747c33932297ab78c42dc0cd9d93bf819f11d26042cbaeb7",
+          "user_id": "synthetic-user-000004",
+          "variant": "treatment"
+        },
+        {
+          "sha256_hex": "9f7503389ee61d93b1e161e31486f401a6fa701776973686729a2b93b5e4404f",
+          "user_id": "synthetic-user-000005",
+          "variant": "treatment"
+        },
+        {
+          "sha256_hex": "4fff593c6a4dcbea1a5d6452832a8cefa6565d0dc764ef1b079ca9191aabb022",
+          "user_id": "synthetic-user-000006",
+          "variant": "control"
+        },
+        {
+          "sha256_hex": "f9982afbff7f5864c78e0c3f76df41614590d07385f37fa5ca7743c62cbd6059",
+          "user_id": "synthetic-user-000007",
+          "variant": "treatment"
+        }
+      ],
+      "observed_counts": {
+        "control": 9971,
+        "treatment": 10029
+      },
+      "passes": true,
+      "repeat_consistent": true,
+      "source": "api/main.py::variant_for",
+      "treatment_fraction": 0.5
+    },
+    "randomization_unit": "user_id",
+    "synthetic": true,
+    "synthetic_design_rule": {
+      "algorithm": "SHA-256 of UTF-8 experiment_salt, NUL delimiter, and user_id; first 64 bits compared with an integer allocation threshold",
+      "allocation_srm_check": {
+        "alpha": 0.001,
+        "arms": [
+          "control",
+          "treatment"
+        ],
+        "degrees_of_freedom": 1,
+        "expected": {
+          "control": 10000.0,
+          "treatment": 10000.0
+        },
+        "method": "Pearson chi-square goodness-of-fit",
+        "mismatch_detected": false,
+        "observed": {
+          "control": 10086,
+          "treatment": 9914
+        },
+        "p_value": 0.2238997316764398,
+        "statistic": 1.4792
+      },
+      "experiment_salt": "reco-engine-adv/synthetic-validation/v1",
+      "golden_vectors": [
+        {
+          "sha256_prefix_64_bit_hex": "55e9ec3c709dbf38",
+          "user_id": "synthetic-user-000000",
+          "variant": "treatment"
+        },
+        {
+          "sha256_prefix_64_bit_hex": "ac46235922e58b66",
+          "user_id": "synthetic-user-000001",
+          "variant": "control"
+        },
+        {
+          "sha256_prefix_64_bit_hex": "fd9255472ee58470",
+          "user_id": "synthetic-user-000002",
+          "variant": "control"
+        },
+        {
+          "sha256_prefix_64_bit_hex": "eec887ccbe44f674",
+          "user_id": "synthetic-user-000003",
+          "variant": "control"
+        },
+        {
+          "sha256_prefix_64_bit_hex": "df52d9d13b096b0e",
+          "user_id": "synthetic-user-000004",
+          "variant": "control"
+        },
+        {
+          "sha256_prefix_64_bit_hex": "5fd0ea707039cd42",
+          "user_id": "synthetic-user-000005",
+          "variant": "treatment"
+        },
+        {
+          "sha256_prefix_64_bit_hex": "85d9c5a9c9ffac80",
+          "user_id": "synthetic-user-000006",
+          "variant": "control"
+        },
+        {
+          "sha256_prefix_64_bit_hex": "4db9cd1064c6b646",
+          "user_id": "synthetic-user-000007",
+          "variant": "treatment"
+        }
+      ],
+      "observed_counts": {
+        "control": 10086,
+        "treatment": 9914
+      },
+      "order_invariant": true,
+      "passes": true,
+      "repeat_consistent": true,
+      "treatment_fraction": 0.5
+    },
+    "users_checked": 20000
+  },
+  "stopping_rule": {
+    "declaration": {
+      "alpha": 0.05,
+      "analysis_unit": "user_id",
+      "confidence_level": 0.95,
+      "experiment_id": "synthetic-ab-machinery-validation-v1",
+      "minimum_detectable_absolute_effect": 0.03,
+      "outcomes_viewed_at_declaration": false,
+      "path": "analysis/stopping_rule.synthetic-example.json",
+      "planned_total_users": 800,
+      "randomization_unit": "user_id",
+      "sha256": "eb75955f5e474bd2e531dd4b75e082c5b2d698c3f21b332a9f24fe2937f63920",
+      "stopping_type": "fixed_horizon",
+      "synthetic_example": true,
+      "target_power": 0.8
+    },
+    "passes": true,
+    "schema": {
+      "draft": "https://json-schema.org/draft/2020-12/schema",
+      "path": "analysis/stopping_rule.schema.json",
+      "sha256": "f7889329c252946a63db429aeed626b558421b568034f376720d036cc1ffbd40"
+    },
+    "schema_errors": [],
+    "semantic_errors": [],
+    "simulation_configuration_alignment": {
+      "checks": {
+        "alpha": true,
+        "confidence_level": true,
+        "minimum_detectable_absolute_effect": true,
+        "planned_total_users": true,
+        "randomization_and_analysis_unit": true,
+        "target_power": true
+      },
+      "passes": true
+    },
+    "valid": true
+  },
+  "user_level_inference": {
+    "descriptive_impression_weighted_difference": 0.3283582089552239,
+    "expected_user_level_difference": 0.0,
+    "passes": true,
+    "primary_user_level_result": {
+      "analysis_unit": "user_id",
+      "comparison": {
+        "absolute_difference": 0.0,
+        "confidence_interval": [
+          -1.1995605108764278,
+          1.1995605108764278
+        ],
+        "confidence_level": 0.95,
+        "degrees_of_freedom": 2.9411764705882355,
+        "p_value_two_sided": 1.0,
+        "reject_null": false,
+        "standard_error": 0.37267799624996495,
+        "test_statistic": 0.0
+      },
+      "control": {
+        "mean_user_ctr": 0.3333333333333333,
+        "sample_standard_deviation": 0.5773502691896258,
+        "users": 3
+      },
+      "method": "two-sided Welch t-test on equal-weight per-user CTR",
+      "randomization_unit": "user_id",
+      "treatment": {
+        "mean_user_ctr": 0.3333333333333333,
+        "sample_standard_deviation": 0.2886751345948129,
+        "users": 3
+      },
+      "warning": "impressions within a user are not treated as independent",
+      "weighting": "one equal-weight CTR per randomized user"
+    },
+    "purpose": "adversarial unequal-impression fixture proving that the primary method weights randomized users equally",
+    "synthetic": true
+  },
+  "validation_checks": {
+    "aa_false_positive_rate": true,
+    "planted_effect_ci_coverage": true,
+    "power_curve": true,
+    "predeclared_stopping_rule": true,
+    "sample_ratio_mismatch": true,
+    "stable_user_assignment": true,
+    "user_level_assignment_matches_inference": true
+  }
+}

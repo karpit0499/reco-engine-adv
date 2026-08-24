@@ -23,6 +23,12 @@ const tally = {
 (async function boot() {
   await C.load();
 
+  const bundleIsMock = C.B.experiment?.mock === true;
+  if (bundleIsMock) {
+    $('#data-banner').hidden = false;
+    $('#pulse').textContent = 'synthetic';
+  }
+
   let sid = store.getItem('reco.sid');
   if (!sid) {
     sid = 'v' + Math.random().toString(36).slice(2, 10);
@@ -78,13 +84,16 @@ const tally = {
     const t = tally.treatment, c = tally.control;
     const r = C.ztest(t.clicks, t.n, c.clicks, c.n);
     const E = C.B.experiment || {};
+    const evidenceCell = E.mock
+      ? ['data status', 'mock / synthetic', '']
+      : ['exported synthetic lift', E.headline_lift ?? '—', ''];
     const cells = [
       ['your arm', state.arm, state.arm === 'treatment' ? 't' : 'c'],
       ['impressions · live', (t.n + c.n).toLocaleString(), ''],
       ['ctr treatment', r ? (r.ctr_t * 100).toFixed(2) + '%' : '—', 't'],
       ['ctr control', r ? (r.ctr_c * 100).toFixed(2) + '%' : '—', 'c'],
       ['p-value · live', r ? (r.p < 1e-4 ? '<0.0001' : r.p.toFixed(4)) : '—', r?.significant ? 'sig' : ''],
-      ['shipped lift · 3,000 rounds', E.headline_lift ?? '—', ''],
+      evidenceCell,
     ];
     $('#readout').innerHTML = cells.map(([k, v, cls]) =>
       `<div class="cell"><span class="k">${k}</span><span class="v ${cls}">${v}</span></div>`).join('');
@@ -94,7 +103,8 @@ const tally = {
     const E = C.B.experiment || {};
     $('#foot-stats').textContent =
       `${C.B.items.ids.length} items · ${C.B.items.dim}-d · ${C.B.ranker.trees.length} trees · ` +
-      `bundle ${E.bundle_kb ?? '?'} KB · exact-NN in the browser`;
+      `bundle ${E.bundle_kb ?? '?'} KB · exact-NN in the browser` +
+      (E.mock ? ' · MOCK / SYNTHETIC' : '');
   }
 
   readout(); foot();

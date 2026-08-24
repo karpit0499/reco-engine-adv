@@ -12,3 +12,9 @@ generator/catalog.jsonl
 generator/users.jsonl
 logs/
 .DS_Store
+benchmarks/recommender/data/
+benchmarks/recommender/.cache/
+benchmarks/recommender/models/
+benchmarks/vector_search_runtime/results/
+benchmarks/vector_search_runtime/private/
+benchmarks/vector_search_runtime/*.runtime-input.json

@@ -2,11 +2,21 @@ import os
 import json
 import random
 import time
+import uuid
 
 import requests
 
 API = os.environ["API_URL"].rstrip("/")
+API_BEARER_TOKEN = os.environ["API_BEARER_TOKEN"]
+SERVERLESS_ID_TOKEN = os.environ.get("SERVERLESS_ID_TOKEN")
 ROUNDS = int(os.environ.get("ROUNDS", "3000"))
+
+session = requests.Session()
+session.headers["Authorization"] = f"Bearer {API_BEARER_TOKEN}"
+if SERVERLESS_ID_TOKEN:
+    # Cloud Run can authenticate the platform token independently while leaving
+    # Authorization available to the application's second authentication layer.
+    session.headers["X-Serverless-Authorization"] = f"Bearer {SERVERLESS_ID_TOKEN}"
 
 users = [json.loads(line) for line in open("users.jsonl")]
 catalog = {r["item_id"]: r["category"]
@@ -20,8 +30,11 @@ errors = 0
 for i in range(ROUNDS):
     u = random.choice(users)
     try:
-        r = requests.post(f"{API}/recommend",
-                          json={"user_id": u["user_id"]}, timeout=30)
+        r = session.post(
+            f"{API}/recommend",
+            json={"user_id": u["user_id"], "request_id": str(uuid.uuid4())},
+            timeout=30,
+        )
         r.raise_for_status()
         rec = r.json()
     except Exception as e:
@@ -43,11 +56,12 @@ for i in range(ROUNDS):
 
     if random.random() < p_click:
         fb = {"impression_id": rec["impression_id"], "user_id": u["user_id"],
-              "event": "click"}
-        requests.post(f"{API}/feedback", json=fb, timeout=30)
+              "event_id": str(uuid.uuid4()), "event": "click"}
+        session.post(f"{API}/feedback", json=fb, timeout=30).raise_for_status()
         if random.random() < CONV_GIVEN_CLICK:
             fb["event"] = "conversion"
-            requests.post(f"{API}/feedback", json=fb, timeout=30)
+            fb["event_id"] = str(uuid.uuid4())
+            session.post(f"{API}/feedback", json=fb, timeout=30).raise_for_status()
 
     if i % 200 == 0:
         print(f"{i}/{ROUNDS}  (errors so far: {errors})")

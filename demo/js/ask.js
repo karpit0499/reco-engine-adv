@@ -4,12 +4,13 @@
  * and those tools are the same functions the Shop tab calls. So it cannot hallucinate a
  * recommendation: it can only ask the recommender for one and describe what came back.
  *
- * The Groq key lives in a Cloudflare Worker (see worker/index.js). It never touches the
- * browser. If the Worker is not configured, this tab says so plainly instead of pretending.
+ * Remote narration is disabled in the public build because the Worker source, retention
+ * policy, and origin controls are not part of this repository. The recommender itself and
+ * every deterministic explanation tool continue to work without a third-party prompt relay.
  */
 import * as C from './core.js';
 
-export const WORKER_URL = 'https://reco-ask.reco-ask.workers.dev';   // <- your Worker, e.g. https://reco-ask.<you>.workers.dev
+export const WORKER_URL = '';
 
 const $ = (s) => document.querySelector(s);
 
@@ -57,10 +58,9 @@ export class Ask {
     $('#q').addEventListener('keydown', (e) => { if (e.key === 'Enter') this.send(); });
 
     if (!WORKER_URL) {
-      this.say('system', 'Not wired up yet. Deploy <code>worker/index.js</code> to Cloudflare ' +
-        '(free), put your Groq key in it, and set <code>WORKER_URL</code> at the top of ' +
-        '<code>js/ask.js</code>. Everything else on this page works without it — the LLM is the ' +
-        'narration layer, not the recommender.');
+      this.say('system', 'Remote narration is disabled in this public build. No prompt, ' +
+        'transcript, recommendation, or tool output is sent to a third-party model endpoint. ' +
+        'The Shop and Lab remain fully local.');
       $('#q').disabled = $('#send').disabled = true;
       return;
     }
@@ -80,7 +80,11 @@ export class Ask {
   trace(name, args) {
     const d = document.createElement('div');
     d.className = 'tool';
-    d.innerHTML = `<b>${name}</b>(${Object.entries(args).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(', ')})`;
+    const label = document.createElement('b');
+    label.textContent = String(name);
+    const renderedArgs = Object.entries(args)
+      .map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(', ');
+    d.append(label, document.createTextNode(`(${renderedArgs})`));
     this.box.append(d);
     this.box.scrollTop = this.box.scrollHeight;
   }
@@ -135,8 +139,9 @@ export class Ask {
         absolute_difference: +r.diff.toFixed(4),
         ci95_on_the_difference: [+r.lo.toFixed(4), +r.hi.toFixed(4)],
         z: +r.z.toFixed(3), p_value: +r.p.toFixed(5), significant_at_005: r.significant,
-        caveat: 'this tally is from THIS browser session; the headline number in the README came ' +
-                'from 3,000 simulated rounds against the deployed Cloud Run API',
+        caveat: C.B.experiment?.mock
+          ? 'MOCK / SYNTHETIC browser-session result only; it is not production or business evidence'
+          : 'synthetic browser-session result only; compare it with the separately exported synthetic experiment artifact',
       };
     }
     return { error: 'unknown tool' };
