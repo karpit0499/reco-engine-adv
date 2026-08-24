@@ -1,0 +1,15 @@
+{
+  "actual_test_split_artifact_sha256": "a1ab951f2bdce9ce33dc37ad561fa2faa93e5341e2dece6892bd54ca6ecb477b",
+  "attempt_nonce": "56ced0d2203db7296585a94b2aed167faea531c6e9d410132724d15e3fde5212",
+  "attempt_owner": "Kumars-MacBook-Pro.local:6226:f9efc7c49b6c48e0a14d1f260bf5cd39",
+  "authorized_at": "2026-08-24T01:37:10.888800+00:00",
+  "completed_at": "2026-08-24T01:37:12.687619+00:00",
+  "expected_test_split_artifact_sha256": "a1ab951f2bdce9ce33dc37ad561fa2faa93e5341e2dece6892bd54ca6ecb477b",
+  "guard": "process-enforced repository ledger; not cryptographic access control",
+  "protocol_commit": "e67ae1ce0b9b8d8c590dc5f8fcdf7c141df2af85",
+  "schema_version": 2,
+  "selection_receipt_sha256": "3ed32e918dd4cb96eb96be9b0c9bd1ddc09d0ace1bd4ef6ea48a212eebbee42d",
+  "status": "completed",
+  "test_result_sha256": "2ac8ebf8a07179d8d85eeb8084f0914523b3030b877784b4165398260c8926e3",
+  "test_split_manifest_sha256": "f2ddf7fd27df5977dda5c0f653af1d850ebffe5e82eb59193f437188201f8bb5"
+}

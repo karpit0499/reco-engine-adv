@@ -36,10 +36,15 @@ state-of-the-art claim.
 | ALS retrieval + logistic reranker | 0.06601 [0.05493, 0.07683] | **0.15249** | **0.21401** |
 
 Validation selected ALS. Against the frozen strongest simple baseline (popularity),
-the paired NDCG@10 difference is `+0.00537`, 95% CI
-`[-0.00325, +0.01376]`. That interval crosses zero, so validation does **not** prove a
-win. The future test remains sealed at this stage and is the only place the declared
-acceptance gate may be evaluated.
+the paired validation NDCG@10 difference is `+0.00537`, 95% CI
+`[-0.00325, +0.01376]`. That interval crosses zero, so validation did **not** prove a
+win.
+
+The one-time test was then run from frozen commit `e67ae1ce`. ALS scored NDCG@10
+`0.04540` versus popularity at `0.05398`; the paired difference was `-0.00858`, 95%
+CI `[-0.02075, +0.00320]`. The predeclared acceptance gate therefore **failed**. This
+is final negative evidence, not a reason to retune against the test. The result and
+completed access ledger are committed under `benchmarks/recommender/results/`.
 
 The retrieval+rereanker retrieves exactly 200 unseen candidates before reranking; its
 validation target retrieval recall is `0.63204`. Full results, cohorts, NDCG/MRR/Recall
@@ -143,7 +148,7 @@ The benchmark downloader verifies archive hash
 `a6898adb50b9ca05aa231689da44c217cb524e7ebd39d264c56e2832f2c54e20`.
 It fails when the real archive is unavailable and never substitutes synthetic data.
 
-The one-time test command is documented in
+The completed one-time test procedure is documented in
 [`benchmarks/recommender/README.md`](./benchmarks/recommender/README.md). It claims a
 mode-`0600`, create-once ledger before any test-file read or hash. Concurrent attempts
 cannot overwrite the ledger or fixed result path. A failed/crashed attempt remains
@@ -171,6 +176,8 @@ narrative and must not be used as the current deployment recipe.
 - MovieLens 1M is real interaction data but small, old, and not representative of an
   online shop. Validation has no cold-item targets under the frozen rule.
 - The six model configurations are predeclared representatives, not tuned families.
+- The selected ALS model did not beat popularity on the frozen test; it must not be
+  promoted or presented as a demonstrated quality improvement.
 - No cost-bearing GCP deployment or endpoint benchmark was authorized or performed;
   cloud correctness is covered by contracts/mocks until an operator runs the guarded
   workflow against named resources.

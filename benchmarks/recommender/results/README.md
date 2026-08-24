@@ -5,13 +5,15 @@ descriptive catalog coverage, warm/cold cohorts, retrieval diagnostics, environm
 versions, and source/split hashes. `selection_receipt.json` hash-links that exact file
 and freezes both the selected model and strongest simple baseline.
 
-Neither file proves test performance. `test.json` and `test_access_ledger.json` must not
-exist before the frozen protocol commit. The authorized test entry point durably
-creates a mode-`0600` ledger with `O_CREAT|O_EXCL` before reading or hashing the
-separately prepared test artifact, then evaluates the selected model and baseline in
-the same pass. A unique owner identifier and nonce authorize later ledger updates.
-Concurrent attempts cannot replace the claim or the fixed result. Hash mismatches and
-recoverable failures update the consumed attempt to `failed` rather than reopening it.
+Those validation files alone do not prove test performance. After the frozen protocol
+commit, the authorized ordinal-1 run created `test.json` and
+`test_access_ledger.json`. ALS did not beat the frozen popularity baseline and the
+declared gate failed. The entry point durably created the mode-`0600` ledger with
+`O_CREAT|O_EXCL` before reading or hashing the separately prepared test artifact, then
+evaluated both models in the same pass. Its unique owner and nonce authorized later
+ledger updates. Concurrent attempts cannot replace the claim or fixed result; a
+mismatch or recoverable failure would have consumed the attempt rather than reopening
+it.
 
 The ledger is process-enforced evidence, not cryptographic access control. Repository
 owners can alter local state, so preserved Git chronology and checked hashes remain

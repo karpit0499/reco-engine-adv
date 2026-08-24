@@ -54,6 +54,11 @@ the same users and paired bootstrap. The acceptance rule is a strictly positive 
 95% confidence bound for the NDCG@10 difference. A failed rule is still final evidence
 and cannot trigger test-driven tuning.
 
+The authorized ordinal-1 test run from frozen commit `e67ae1ce` completed. ALS
+NDCG@10 was `0.04540`; popularity was `0.05398`. Their paired difference was
+`-0.00858` with 95% CI `[-0.02075, +0.00320]`, so the acceptance gate failed. The
+completed result and access ledger are the authoritative post-test evidence.
+
 ## 3. Immutable embedding generation
 
 Training produces four create-once objects per `generation_id`:
