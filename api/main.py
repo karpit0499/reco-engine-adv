@@ -279,8 +279,8 @@ def health():
 def recommend():
     try:
         recommendation_request = parse_recommend(request_json())
-    except ContractError as error:
-        return {"error": str(error)}, 400
+    except ContractError:
+        return {"error": "invalid recommendation request"}, 400
     uid = recommendation_request.user_id
 
     try:
@@ -329,8 +329,8 @@ def feedback():
     affect rows in the streaming buffer, which is not supported`."""
     try:
         event = parse_feedback(request_json())
-    except ContractError as error:
-        return {"error": str(error)}, 400
+    except ContractError:
+        return {"error": "invalid feedback request"}, 400
 
     try:
         linked = impression_belongs_to_user(event.impression_id, event.user_id)

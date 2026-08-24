@@ -23,7 +23,6 @@ _INDEX_ENDPOINT = re.compile(
 )
 _DEPLOYED_INDEX_ID = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,127}$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
-_OPS_IMAGE = re.compile(r"^[^\s:@]+(?:/[^\s:@]+)+@sha256:[0-9a-f]{64}$")
 _SOURCE_REVISION = re.compile(r"^[0-9a-f]{40}$")
 DATAPOINT_SEPARATOR = "::"
 
@@ -168,6 +167,23 @@ def validate_generation_id(value: str) -> str:
     return value
 
 
+def _digest_pinned_ops_image(value: Any) -> bool:
+    """Validate the image reference in linear time without nested regex repeats."""
+    if not isinstance(value, str):
+        return False
+    repository, marker, digest = value.rpartition("@sha256:")
+    if marker != "@sha256:" or len(digest) != 64:
+        return False
+    if any(character not in "0123456789abcdef" for character in digest):
+        return False
+    segments = repository.split("/")
+    return len(segments) >= 2 and all(
+        segment
+        and not any(character.isspace() or character in ":@" for character in segment)
+        for segment in segments
+    )
+
+
 def validate_active_receipt(
     generation_id: str,
     *,
@@ -191,7 +207,7 @@ def validate_active_receipt(
         raise ContractError("active manifest object generation is invalid")
     if not isinstance(manifest_sha256, str) or not _SHA256.fullmatch(manifest_sha256):
         raise ContractError("active manifest digest is invalid")
-    if not isinstance(ops_image_uri, str) or not _OPS_IMAGE.fullmatch(ops_image_uri):
+    if not _digest_pinned_ops_image(ops_image_uri):
         raise ContractError("active ops image is not digest-pinned")
     if not isinstance(source_revision, str) or not _SOURCE_REVISION.fullmatch(source_revision):
         raise ContractError("active source revision is invalid")

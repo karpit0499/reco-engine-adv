@@ -101,6 +101,20 @@ class GenerationServingContractTests(unittest.TestCase):
             with self.subTest(field=field), self.assertRaises(ContractError):
                 validate_active_receipt("gen-42", **(values | {field: invalid}))
 
+    def test_ops_image_validation_rejects_long_near_matches(self):
+        values = {
+            "manifest_uri": "gs://test-artifacts/candidate-generations/gen-42/manifest.json",
+            "manifest_object_generation": 17,
+            "manifest_sha256": "a" * 64,
+            "ops_image_uri": "registry/" + ("segment/" * 10_000)
+            + "image@sha256:"
+            + "b" * 63
+            + "!",
+            "source_revision": "c" * 40,
+        }
+        with self.assertRaises(ContractError):
+            validate_active_receipt("gen-42", **values)
+
     def test_exact_vertex_target_and_namespaced_id_are_required(self):
         target = serving_target(
             "projects/p/locations/europe-west3/indexes/123",

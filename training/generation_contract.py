@@ -18,7 +18,6 @@ ENDPOINT_RE = re.compile(
     r"^projects/[^/]+/locations/[^/]+/indexEndpoints/[^/]+$"
 )
 DEPLOYED_INDEX_ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,127}$")
-OPS_IMAGE_RE = re.compile(r"^[^\s:@]+(?:/[^\s:@]+)+@sha256:[0-9a-f]{64}$")
 SOURCE_REVISION_RE = re.compile(r"^[0-9a-f]{40}$")
 CANDIDATE_PREFIX = "candidate-generations"
 USER_GENERATIONS_TABLE = "user_embedding_generations"
@@ -72,7 +71,23 @@ def validate_binding(
 
 
 def validate_ops_image_uri(value: str) -> str:
-    if not isinstance(value, str) or not OPS_IMAGE_RE.fullmatch(value):
+    if not isinstance(value, str):
+        raise ValueError("ops image must be an OCI URI pinned by sha256 digest")
+    repository, marker, digest = value.rpartition("@sha256:")
+    segments = repository.split("/")
+    if (
+        marker != "@sha256:"
+        or len(digest) != 64
+        or any(character not in "0123456789abcdef" for character in digest)
+        or len(segments) < 2
+        or any(
+            not segment
+            or any(
+                character.isspace() or character in ":@" for character in segment
+            )
+            for segment in segments
+        )
+    ):
         raise ValueError("ops image must be an OCI URI pinned by sha256 digest")
     return value
 

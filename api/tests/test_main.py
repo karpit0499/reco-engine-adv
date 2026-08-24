@@ -52,6 +52,41 @@ class EndpointTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 400)
 
+    @mock.patch.object(
+        main,
+        "parse_recommend",
+        side_effect=ContractError("sensitive parser diagnostics"),
+    )
+    def test_recommend_contract_errors_do_not_expose_exception_text(self, _parse):
+        response = self.client.post(
+            "/recommend",
+            json={"user_id": "user-42", "request_id": REQUEST_ID},
+            headers=AUTH,
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json, {"error": "invalid recommendation request"})
+        self.assertNotIn("sensitive", response.get_data(as_text=True))
+
+    @mock.patch.object(
+        main,
+        "parse_feedback",
+        side_effect=ContractError("sensitive parser diagnostics"),
+    )
+    def test_feedback_contract_errors_do_not_expose_exception_text(self, _parse):
+        response = self.client.post(
+            "/feedback",
+            json={
+                "user_id": "user-42",
+                "impression_id": IMPRESSION_ID,
+                "event_id": EVENT_ID,
+                "event": "click",
+            },
+            headers=AUTH,
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json, {"error": "invalid feedback request"})
+        self.assertNotIn("sensitive", response.get_data(as_text=True))
+
     @mock.patch.object(main, "log_impression")
     @mock.patch.object(main, "popular_items", return_value=["item-1", "item-2"])
     @mock.patch.object(main, "variant_for", return_value="control")
