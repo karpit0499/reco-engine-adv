@@ -1,5 +1,5 @@
 numpy==1.26.4
 scipy==1.17.1
-scikit-learn==1.5.1
+scikit-learn==1.9.1
 torch==2.13.0
 pytest==9.1.1
